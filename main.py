@@ -16,14 +16,97 @@ from scipy.stats import norm
 
 # gui.assemble_image(64, (200, 200))
 
+class Board:
+    def __init__(self, initial_board=None):
+        if initial_board is None:
+            self.board: list = [
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ]
+        else:
+            self.board: list = initial_board
+
+    def add_tile(self, tile_value: int, x_coord: int, y_coord: int):
+        self.board[y_coord][x_coord] = tile_value
+
+    def value_of_position(self, x_coord: int, y_coord: int) -> int:
+        return self.board[y_coord][x_coord]
+
+    # this fn untested! it's important tho
+    def move_tile(self, square1: tuple, square2: tuple, eat: bool = False) -> int:
+        """returns how much score to add"""
+        x1, y1 = square1
+        x2, y2 = square2
+        tile_value = self.value_of_position(x1, y1)
+        # remove from old location
+        self.board[y1][x1] = 0
+        # place in new location no eat
+        if not eat:
+            self.board[y2][x2] = tile_value
+        else:
+            self.board[y2][x2] = tile_value * 2
+            return tile_value * 2
+        return 0
+
+    def print(self, highest=2):
+        tile_colours = {
+            2048: "EDC22E",
+            1024: "#EDC23F",
+            512: "#EDC850",
+            256: "#EDCC61",
+            128: "#EDCF72",
+            64: "#F65E3B",
+            32: "#F67C5F",
+            16: "#F59563",
+            8: "#F2B179",
+            4: "#EDE0C8",
+            2: "#EEE4DA",
+            0: "#CCC0B3"
+        }
+
+        # print("in if not un")
+        #print(f"highest = {highest}")
+        highest2 = copy(highest)
+        #print(f"highest2 = {highest2}, highest = {highest}")
+        for row in self.board:
+            #print(f"higest2 = {highest2}")
+            for tile in row:
+
+                # FFFFFF is white, 000000 is black
+                print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=tile_colours[tile], fore="000000"), end=" ")
+                # print(colr.color("32", back=tile_colours[32], fore="FFFFFF"))
+            print("")
+        # self.print_table()
+
+    def print_table(self):  # not currently used
+        my_table = PrettyTable()
+        my_table.header = False
+        for i in range(4):
+            my_table.add_row(self.board[i])
+
+        print(my_table)
+
+    def __getitem__(self, coordinate: tuple) -> int:
+        x, y = coordinate
+        return self.board[y][x]
+
+    def __setitem__(self, coordinate: tuple, value: int):
+        x, y = coordinate
+        self.board[y][x] = value
+
 
 class Game:
-    def __init__(self, track_primes: bool = False) -> None:
+    def __init__(self, track_primes: bool = False, board: Board = None) -> None:
         self.track_primes: bool = track_primes
         self.prime_tracker: int = 1
-
         self.score: int = 0
-        self.board: Board = Board()
+
+        if board is  None:
+            self.board: Board = Board()
+        else:
+            self.board = Board
         self.num_moves: int = 0
         self.highest_tile: int = 0
 
@@ -77,9 +160,11 @@ class Game:
     def down(self):
         return self.move(3)
 
-    def move(self, direction: int) -> bool:
+    def move(self, direction: int, print_board: bool = True, illegal_warn: bool = True) -> bool:
         """returns whether it was successful"""
         # 0 = right, 1 = left, 2 = up, 3 = down
+        if direction not in (0, 1, 2, 3):
+            raise ValueError("Only directions 0-3 are allowed. 0 = right, 1 = left, 2 = up, 3 = down")
 
         square_coord_list = []
         if direction in (1, 2):  # left or up
@@ -125,7 +210,8 @@ class Game:
 
         illegal_move = False
         if set(not_moving_list) == set(tiles_to_move):
-            print("ILLEGAL MOVE!")
+            if illegal_warn:
+                print("ILLEGAL MOVE!")
             return False
 
         if not illegal_move:
@@ -140,7 +226,8 @@ class Game:
                     3: 7  # down
                 }
                 self.prime_tracker *= prime_direction_dict[direction]
-        self.print_board()
+        if print_board:
+            self.print_board()
 
         self.num_moves += 1
         return True
@@ -227,86 +314,23 @@ class Game:
         # print(f"in empty sq, will return {self.board.value_of_position(x, y) == 0}")
         return self.board.value_of_position(x, y) == 0
 
+    def game_over_check(self) -> bool:
+        for y in range(4):
+            for x in range(4):
+                if self.board.value_of_position(x, y) == 0:
+                    # Found an empty tile
+                    return False
+                if x < 3 and self.board.value_of_position(x, y) == self.board.value_of_position(x + 1, y):
+                    # Found adjacent tiles with the same value
+                    return False
+                if y < 3 and self.board.value_of_position(x, y) == self.board.value_of_position(x, y + 1):
+                    # Found adjacent tiles with the same value
+                    return False
+        # No empty tiles and no adjacent tiles with the same value
+        return True
 
-class Board:
-    def __init__(self, initial_board=None):
-        if initial_board is None:
-            self.board: list = [
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-                [0, 0, 0, 0]
-            ]
-        else:
-            self.board: list = initial_board
 
-    def add_tile(self, tile_value: int, x_coord: int, y_coord: int):
-        self.board[y_coord][x_coord] = tile_value
 
-    def value_of_position(self, x_coord: int, y_coord: int) -> int:
-        return self.board[y_coord][x_coord]
-
-    # this fn untested! it's important tho
-    def move_tile(self, square1: tuple, square2: tuple, eat: bool = False) -> int:
-        """returns how much score to add"""
-        x1, y1 = square1
-        x2, y2 = square2
-        tile_value = self.value_of_position(x1, y1)
-        # remove from old location
-        self.board[y1][x1] = 0
-        # place in new location no eat
-        if not eat:
-            self.board[y2][x2] = tile_value
-        else:
-            self.board[y2][x2] = tile_value * 2
-            return tile_value * 2
-        return 0
-
-    def print(self, highest=2):
-        tile_colours = {
-            2048: "EDC22E",
-            1024: "#EDC23F",
-            512: "#EDC850",
-            256: "#EDCC61",
-            128: "#EDCF72",
-            64: "#F65E3B",
-            32: "#F67C5F",
-            16: "#F59563",
-            8: "#F2B179",
-            4: "#EDE0C8",
-            2: "#EEE4DA",
-            0: "#CCC0B3"
-        }
-
-        # print("in if not un")
-        #print(f"highest = {highest}")
-        highest2 = copy(highest)
-        #print(f"highest2 = {highest2}, highest = {highest}")
-        for row in self.board:
-            #print(f"higest2 = {highest2}")
-            for tile in row:
-
-                # FFFFFF is white, 000000 is black
-                print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=tile_colours[tile], fore="000000"), end=" ")
-                # print(colr.color("32", back=tile_colours[32], fore="FFFFFF"))
-            print("")
-        # self.print_table()
-
-    def print_table(self):  # not currently used
-        my_table = PrettyTable()
-        my_table.header = False
-        for i in range(4):
-            my_table.add_row(self.board[i])
-
-        print(my_table)
-
-    def __getitem__(self, coordinate: tuple) -> int:
-        x, y = coordinate
-        return self.board[y][x]
-
-    def __setitem__(self, coordinate: tuple, value: int):
-        x, y = coordinate
-        self.board[y][x] = value
 
 
 
@@ -363,10 +387,22 @@ def run_game(arrow_input=False, track_primes=False):
             keyboard_input()
 
 
+# run_game()
+
+if __name__ == '__main__':
+
+    from AI import MonteCarloTree
+
+    g = Game()
+    g.setup_board()
+    g.print_board()
+    print("set up board")
+    m = MonteCarloTree(g, depth=500)
+    m.run_simulation()
 
 
 
-run_game(track_primes=True)
+# run_game(track_primes=True)
 #db2 = Down2(print_moves=False)
 #db2.run()
 
@@ -376,7 +412,9 @@ run_game(track_primes=True)
 # m1 = ManyRuns(Down2, 50, print_moves=True)
 # m1.run()
 
-# from opeinAI
+
+
+
 import tkinter as tk
 
 
