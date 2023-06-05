@@ -5,13 +5,13 @@ import colr
 from pynput import keyboard
 from pynput.keyboard import Key
 from copy import copy
-# import gui
-import tkinter as tk
 
-# gui.assemble_image(64, (200, 200))
+import tkinter as tk
+import copy
+
 
 class Board:
-    def __init__(self, window, initial_board=None):
+    def __init__(self, window=None, initial_board=None):
         if initial_board is None:
             self.board: list = [
                 [0, 0, 0, 0],
@@ -21,13 +21,41 @@ class Board:
             ]
         else:
             self.board: list = initial_board
-
+        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} BEFORE IF")
+        if window is None:
+            window = new_window()
+        if window == "SKIP_WINDOW":
+            window = 0
+        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} AFTER IF")
         self.window = window
-        self.tiles = [[None for _ in range(4)] for _ in range(4)]
-        for i in range(4):
-            for j in range(4):
-                self.tiles[i][j] = tk.Canvas(self.window, width=100, height=100)
-                self.tiles[i][j].grid(row=i, column=j)
+        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} END")
+        if window != "SKIP_WINDOW":
+            self.tiles = [[None for _ in range(4)] for _ in range(4)]
+            for i in range(4):
+                for j in range(4):
+                    self.tiles[i][j] = tk.Canvas(self.window, width=100, height=100)
+                    self.tiles[i][j].grid(row=i, column=j)
+
+    def __deepcopy__(self, memo):
+        # print("IN __deepcopy__")
+        # create a new game instance
+        cls = self.__class__
+        new_game = cls.__new__(cls)
+
+        memo[id(self)] = new_game
+
+        # copy all attributes, but ignore the Tkinter window
+        for k, v in self.__dict__.items():
+            if k in ('window', "tiles"):
+                # print("in if")
+                setattr(new_game, k, None)  # or whatever default value you prefer
+                # print("done if")
+            else:
+                # print(f"BOARD in else for {k}: {v}, type: {type(v)}")
+                setattr(new_game, k, copy.deepcopy(v, memo))
+                # print(f"BOARD dn else for {k}: {v}")
+
+        return new_game
 
     def add_tile(self, tile_value: int, x_coord: int, y_coord: int):
         self.board[y_coord][x_coord] = tile_value
@@ -67,9 +95,7 @@ class Board:
             0: "#CCC0B3"
         }
 
-        # print("in if not un")
-        #print(f"highest = {highest}")
-        highest2 = copy(highest)
+        highest2 = copy.copy(highest)
         #print(f"highest2 = {highest2}, highest = {highest}")
         for row in self.board:
             #print(f"higest2 = {highest2}")
@@ -81,7 +107,6 @@ class Board:
             print("")
 
     def tkinter_print(self):
-
         tile_colours = {
             2048: "#EDC22E",
             1024: "#EDC23F",
@@ -115,20 +140,44 @@ class Board:
         self.board[y][x] = value
 
 
+def new_window():
+    window = tk.Tk()
+    window.title("2048 Game")
+    return window
+
 class Game:
-    def __init__(self, window, track_primes: bool = False, board: Board = None) -> None:
+    def __init__(self, window=None, track_primes: bool = False, board: Board = None) -> None:
         self.track_primes: bool = track_primes
         self.prime_tracker: int = 1
         self.score: int = 0
 
-        self.window = window
-
-        if board is  None:
-            self.board: Board = Board(window)
+        if board is None:
+            self.board: Board = Board()
         else:
             self.board = board
         self.num_moves: int = 0
         self.highest_tile: int = 0
+
+    def __deepcopy__(self, memo):
+        # print("IN __deepcopy__")
+        # create a new game instance
+        cls = self.__class__
+        new_game = cls.__new__(cls)
+
+        memo[id(self)] = new_game
+
+        # copy all attributes, but ignore the Tkinter window
+        for k, v in self.__dict__.items():
+            if k == 'window':
+                # print("in if")
+                setattr(new_game, k, None)  # or whatever default value you prefer
+                # print("done if")
+            else:
+                # print(f"GAME in else for {k}: {v}")
+                setattr(new_game, k, copy.deepcopy(v, memo))
+                # print(f"GAME dn else for {k}: {v}")
+
+        return new_game
 
     def return_prime(self):
         if not self.track_primes:
@@ -363,10 +412,10 @@ class Game:
 
 def run_game(track_primes=False):
     # new start
-    window = tk.Tk()
-    window.title("2048 Game")
+    # window = tk.Tk()
+    # window.title("2048 Game")
 
-    running_game = Game(window, track_primes)
+    running_game = Game(track_primes=track_primes)
     print(f"on any move, enter 'p' to return prime tracker")
     running_game.setup_board()
     running_game.print_board()
@@ -404,12 +453,12 @@ def run_game(track_primes=False):
 if __name__ == '__main__':
     from AI import MC2, RandomMoves
 
-    # g = Game()
-    # g.setup_board()
-    # m = MC2(g)
-    # m.tmp()
-    # os.system("clear")
-    run_game()
+    g = Game()
+    g.setup_board()
+    m = MC2(g)
+    m.tmp()
+    os.system("clear")
+    # run_game()
 
     # m2 = RandomMoves(g)
     # m2.run()
@@ -455,144 +504,6 @@ if __name__ == '__main__':
 
 
 
-
-import tkinter as tk
-
-
-
-# class GameGUI:
-#     def __init__(self, game):
-#         self.game = game
-#         self.root = tk.Tk()
-#         self.frame = tk.Frame(self.root)
-#         self.frame.pack()
-#
-#         self.score_label = tk.Label(self.frame, text=f"Score: {self.game.score}")
-#         self.score_label.pack()
-#
-#         self.board_frame = tk.Frame(self.frame)
-#         self.board_frame.pack()
-#
-#         self.tile_labels = []
-#         for row in range(4):
-#             row_frame = tk.Frame(self.board_frame)
-#             row_frame.pack()
-#             self.tile_labels.append([])
-#             for col in range(4):
-#                 label = tk.Label(row_frame, text=self.game.board[row, col], width=5, height=2)
-#                 label.pack(side=tk.LEFT)
-#                 self.tile_labels[row].append(label)
-#
-#         self.button_frame = tk.Frame(self.frame)
-#         self.button_frame.pack()
-#         self.left_button = tk.Button(self.button_frame, text="Left", command=self.move_left)
-#         self.left_button.pack(side=tk.LEFT)
-#         self.up_button = tk.Button(self.button_frame, text="Up", command=self.move_up)
-#         self.up_button.pack(side=tk.LEFT)
-#         self.right_button = tk.Button(self.button_frame, text="Right", command=self.move_right)
-#         self.right_button.pack(side=tk.LEFT)
-#         self.down_button = tk.Button(self.button_frame, text="Down", command=self.move_down)
-#         self.down_button.pack(side=tk.LEFT)
-#
-#     def move_left(self):
-#         if self.game.left():
-#             self.update_display()
-#
-#     def move_up(self):
-#         if self.game.up():
-#             self.update_display()
-#
-#     def move_right(self):
-#         if self.game.right():
-#             self.update_display()
-#
-#     def move_down(self):
-#         if self.game.down():
-#             self.update_display()
-#
-#     def update_display(self):
-#         for row in range(4):
-#             for col in range(4):
-#                 self.tile_labels[row][col].config(text=self.game.board[row, col])
-#         self.score_label.config(text=f"Score: {self.game.score}")
-#
-#     def run(self):
-#         self.root.mainloop()
-
-
-# class GameGUI:
-#     def __init__(self):
-#         self.game = game
-#         self.root = tk.Tk()
-#         self.frame = tk.Frame(self.root)
-#         self.frame.pack()
-#         self.score_label = tk.Label(self.frame, text=f"Score: {self.game.score}")
-#         self.score_label.pack()
-#
-#         self.board_frame = tk.Frame(self.frame)
-#         self.board_frame.pack()
-#
-#         self.tile_labels = []
-#         for row in range(4):
-#             row_frame = tk.Frame(self.board_frame)
-#             row_frame.pack()
-#             self.tile_labels.append([])
-#             for col in range(4):
-#                 label = tk.Label(row_frame, text=self.game.board[row, col], width=5, height=2)
-#                 label.pack(side=tk.LEFT)
-#                 self.tile_labels[row].append(label)
-#
-#         self.button_frame = tk.Frame(self.frame)
-#         self.button_frame.pack()
-#         self.left_button = tk.Button(self.button_frame, text="Left", command=self.move_left)
-#         self.left_button.pack(side=tk.LEFT)
-#         self.up_button = tk.Button(self.button_frame, text="Up", command=self.move_up)
-#         self.up_button.pack(side=tk.LEFT)
-#         self.right_button = tk.Button(self.button_frame, text="Right", command=self.move_right)
-#         self.right_button.pack(side=tk.LEFT)
-#         self.down_button = tk.Button(self.button_frame, text="Down", command=self.move_down)
-#         self.down_button.pack(side=tk.LEFT)
-#
-#         self.root.bind("<Left>", self.move_left)
-#         self.root.bind("<Up>", self.move_up)
-#         self.root.bind("<Right>", self.move_right)
-#         self.root.bind("<Down>", self.move_down)
-#
-#
-#     def move_left(self, event=None):
-#         if self.game.left():
-#             self.update_display()
-#
-#
-#     def move_up(self, event=None):
-#         if self.game.up():
-#             self.update_display()
-#
-#
-#     def move_right(self, event=None):
-#         if self.game.right():
-#             self.update_display()
-#
-#
-#     def move_down(self, event=None):
-#         if self.game.down():
-#             self.update_display()
-#
-#
-#     def update_display(self):
-#         for row in range(4):
-#             for col in range(4):
-#                 self.tile_labels[row][col].config(text=self.game.board[row, col])
-#         self.score_label.config(text=f"Score: {self.game.score}")
-
-
-# def run(self
-
-
-# game = Game()
-# game.setup_board()
-# gui = GameGUI(game)
-# gui.run()
 
 
 

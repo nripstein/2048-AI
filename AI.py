@@ -1,5 +1,7 @@
 import statistics
 import copy
+import time
+
 import numpy as np
 
 class Down2:
@@ -233,5 +235,86 @@ class MonteCarloTree:
         # current_game_copy = copy.deepcopy(self.game)
         # current_game_copy.down()
         # candidate_scores.append(self.simulate_1_game(current_game_copy))
+
+class MC2:
+    def __init__(self, game, sims_per_turn: int = 100) -> None:
+        self.master_game = game
+        self.sims_per_turn = sims_per_turn
+
+    @staticmethod
+    def one_game(game):
+        # print("in one game")
+        while not game.game_over_check():
+            current_direction = np.random.randint(0, 4)
+            # print(current_direction)
+            # game.print_board()
+            game.move(current_direction, print_board=False, illegal_warn=False)
+            # print("uh")
+        else:
+            return game.score
+
+    def n_games(self):
+        move_dict = {0: "right", 1: "left", 2: "up", 3: "down"}
+        scores = []
+        for direction in range(4):
+            # print(f"start direction {direction}")
+
+            # TEMP ADD
+            # print(self.master_game.__dict__)
+            # for i in self.master_game.__dict__:
+            #     print(i, self.master_game.__dict__[i], type(self.master_game.__dict__[i]))
+            # delattr(self.master_game, "window")
+            # print("--------")
+            # master_dict = self.master_game.__dict__
+            # for i in master_dict:
+            #     print(i, master_dict[i], type(master_dict[i]))
+            # TMP ADD END
+
+            game_copy = copy.deepcopy(self.master_game)  # I THINK GETTING RID OF DEEPCOPY BROKE IT SO ALL THE SCORES BECOME THE SAME
+            # TEMP BIG TEST
+            # game_copy = self.master_game
+            # TMP BIG TEST END
+            if not game_copy.move(direction, print_board=False, illegal_warn=False):
+                # print(f"illegal to move {move_dict[direction]}")  # illegal warn but specifies direction
+                scores.append(game_copy.score)
+            else:
+                # print("ok")
+                direction_scores_to_avg = []
+                for sim in range(self.sims_per_turn):
+                    # print(f"sim num {sim}")
+                    current_score = self.one_game(game_copy)
+                    direction_scores_to_avg.append(current_score)
+
+                scores.append(np.average(np.array(direction_scores_to_avg)))
+                print(f"ADDED SCORE of {np.average(np.array(direction_scores_to_avg))} from going {move_dict[direction]}")
+            # print(f"done direction {direction}")
+        best_direction = scores.index(max(scores))
+
+        print(scores, move_dict[best_direction])
+
+        # print("START")
+        time.sleep(0.01)
+        # print("END")
+        self.master_game.move(best_direction)
+        # print("ok")
+
+    def tmp(self):
+        while not self.master_game.game_over_check():
+            self.n_games()
+
+            self.master_game.print_board()
+
+
+class RandomMoves:
+    def __init__(self, game):
+        self.game = game
+
+    def run(self):
+        while not self.game.game_over_check():
+            self.game.move(np.random.randint(1, 4), illegal_warn=False)
+        else:
+            print("done")
+
+
 
 
