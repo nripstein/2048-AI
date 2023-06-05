@@ -1,23 +1,17 @@
+import os
 import random
 import colr
-import statistics
-from prettytable import PrettyTable
+
 from pynput import keyboard
 from pynput.keyboard import Key
 from copy import copy
-import gui
-
-import time
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.stats import norm
+# import gui
+import tkinter as tk
 
 # gui.assemble_image(64, (200, 200))
 
 class Board:
-    def __init__(self, initial_board=None):
+    def __init__(self, window, initial_board=None):
         if initial_board is None:
             self.board: list = [
                 [0, 0, 0, 0],
@@ -27,6 +21,13 @@ class Board:
             ]
         else:
             self.board: list = initial_board
+
+        self.window = window
+        self.tiles = [[None for _ in range(4)] for _ in range(4)]
+        for i in range(4):
+            for j in range(4):
+                self.tiles[i][j] = tk.Canvas(self.window, width=100, height=100)
+                self.tiles[i][j].grid(row=i, column=j)
 
     def add_tile(self, tile_value: int, x_coord: int, y_coord: int):
         self.board[y_coord][x_coord] = tile_value
@@ -78,15 +79,32 @@ class Board:
                 print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=tile_colours[tile], fore="000000"), end=" ")
                 # print(colr.color("32", back=tile_colours[32], fore="FFFFFF"))
             print("")
-        # self.print_table()
 
-    def print_table(self):  # not currently used
-        my_table = PrettyTable()
-        my_table.header = False
+    def tkinter_print(self):
+
+        tile_colours = {
+            2048: "#EDC22E",
+            1024: "#EDC23F",
+            512: "#EDC850",
+            256: "#EDCC61",
+            128: "#EDCF72",
+            64: "#F65E3B",
+            32: "#F67C5F",
+            16: "#F59563",
+            8: "#F2B179",
+            4: "#EDE0C8",
+            2: "#EEE4DA",
+            0: "#CCC0B3"
+        }
         for i in range(4):
-            my_table.add_row(self.board[i])
-
-        print(my_table)
+            for j in range(4):
+                tile = self.board[i][j]
+                color = tile_colours[tile]
+                text_color = "#000000" if tile > 0 else "#FFFFFF"
+                self.tiles[i][j].create_rectangle(10, 10, 90, 90, fill=color)
+                self.tiles[i][j].create_text(50, 50, text=str(tile) if tile != 0 else '', fill=text_color,
+                                             font=("Helvetica", 24))
+        self.window.update()
 
     def __getitem__(self, coordinate: tuple) -> int:
         x, y = coordinate
@@ -98,15 +116,17 @@ class Board:
 
 
 class Game:
-    def __init__(self, track_primes: bool = False, board: Board = None) -> None:
+    def __init__(self, window, track_primes: bool = False, board: Board = None) -> None:
         self.track_primes: bool = track_primes
         self.prime_tracker: int = 1
         self.score: int = 0
 
+        self.window = window
+
         if board is  None:
-            self.board: Board = Board()
+            self.board: Board = Board(window)
         else:
-            self.board = Board
+            self.board = board
         self.num_moves: int = 0
         self.highest_tile: int = 0
 
@@ -146,7 +166,8 @@ class Game:
 
     def print_board(self):
         print(f"--------------------SCORE: {self.score}--------------------")
-        self.board.print(highest=len(str(self.highest_tile)))
+        # self.board.print(highest=len(str(self.highest_tile)))
+        self.board.tkinter_print()
 
     def left(self):
         return self.move(1)
@@ -192,13 +213,11 @@ class Game:
         not_moving_list = set()
         for tile in tiles_to_move:
             #print(f"---tile is {tile}--")
-            temp_board_obj = Board(self.board.board[:])
-            #temp_board_obj.print()
-            traverse = self.traverse_list(tile, direction, temp_board_obj)
+            traverse = self.traverse_list(tile, direction, self.board)
             # print(f"traverse of {tile}= {traverse}")
             if not traverse[0]:
                 # print(f"{tile} not moving")
-                not_moving_list.add(tile)  # should make this a set off the bat for efficiency instaed of converting it
+                not_moving_list.add(tile)
             else:
                 #print(f"{tile} moving to {traverse[0][-1]}")
                 #print(f"{tile}'s traverse = {traverse}")
@@ -337,70 +356,92 @@ class Game:
 #global latest_key
 # latest_key = "NONE"
 
-def keyboard_input():
 
-    def on_key_release(key):
-
-        if key == Key.right:
-            print("Right key clicked")
-            # global latest_key
-            # latest_key = "Right"
-        elif key == Key.left:
-            print("Left key clicked")
-        elif key == Key.up:
-            print("Up key clicked")
-        elif key == Key.down:
-            print("Down key clicked")
-        elif key == Key.esc:
-            exit()
-
-    with keyboard.Listener(on_release=on_key_release) as listener:
-        listener.join()
 
 
 # keyboard_input()
 
-def run_game(arrow_input=False, track_primes=False):
-    running_game = Game(track_primes)
+def run_game(track_primes=False):
+    # new start
+    window = tk.Tk()
+    window.title("2048 Game")
+
+    running_game = Game(window, track_primes)
     print(f"on any move, enter 'p' to return prime tracker")
     running_game.setup_board()
     running_game.print_board()
+    # new end
+
+    # running_game = Game(track_primes)
+    # print(f"on any move, enter 'p' to return prime tracker")
+    # running_game.setup_board()
+    # running_game.print_board()
 
     while True:
         #running_game.print_board()
-        if not arrow_input:
-            move = input("direction (w, a, s, d): ")
-            # 0 = right, 1 = left, 2 = up, 3 = down
+        move = input("direction (w, a, s, d): ")
+        # 0 = right, 1 = left, 2 = up, 3 = down
 
-            if move == "s":
-                running_game.down()
-            elif move == "w":
-                running_game.up()
-            elif move == "a":
-                running_game.left()
-            elif move == "d":
-                running_game.right()
+        if move == "s":
+            running_game.down()
+        elif move == "w":
+            running_game.up()
+        elif move == "a":
+            running_game.left()
+        elif move == "d":
+            running_game.right()
 
-            elif move == "p":
-                print(running_game.return_prime())
-        else:
-            keyboard_input()
+        elif move == "p":
+            print(running_game.return_prime())
 
 
-# run_game()
+
+
+
+
+
 
 if __name__ == '__main__':
+    from AI import MC2, RandomMoves
 
-    from AI import MonteCarloTree
+    # g = Game()
+    # g.setup_board()
+    # m = MC2(g)
+    # m.tmp()
+    # os.system("clear")
+    run_game()
 
-    g = Game()
-    g.setup_board()
-    g.print_board()
-    print("set up board")
-    m = MonteCarloTree(g, depth=500)
-    m.run_simulation()
+    # m2 = RandomMoves(g)
+    # m2.run()
 
+    # from AI import MonteCarloTree
+    #
+    # g = Game()
+    # g.setup_board()
+    # g.print_board()
+    # print("set up board")
+    # m = MonteCarloTree(g, depth=5)
+    # m.run_simulation()
 
+# def keyboard_input():
+#
+#     def on_key_release(key):
+#
+#         if key == Key.right:
+#             print("Right key clicked")
+#             # global latest_key
+#             # latest_key = "Right"
+#         elif key == Key.left:
+#             print("Left key clicked")
+#         elif key == Key.up:
+#             print("Up key clicked")
+#         elif key == Key.down:
+#             print("Down key clicked")
+#         elif key == Key.esc:
+#             exit()
+#
+#     with keyboard.Listener(on_release=on_key_release) as listener:
+#         listener.join()
 
 # run_game(track_primes=True)
 #db2 = Down2(print_moves=False)
