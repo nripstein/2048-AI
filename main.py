@@ -149,10 +149,11 @@ def new_window():
     return window
 
 class Game:
-    def __init__(self, track_primes: bool = False, board: Board = None) -> None:
+    def __init__(self, track_primes: bool = False, board: Board = None, use_gui: bool = True) -> None:
         self.track_primes: bool = track_primes
         self.prime_tracker: int = 1
         self.score: int = 0
+        self.use_gui = use_gui
 
         if board is None:
             self.board: Board = Board()
@@ -216,10 +217,12 @@ class Game:
             square_coord = [x, y]
         self.board.add_tile(tile_value, x, y)
 
-    def print_board(self):
-        # print(f"--------------------SCORE: {self.score}--------------------")
-        # self.board.print(highest=len(str(self.highest_tile)))
-        self.board.tkinter_print(self.score)
+    def display_updated_board(self):
+        if self.use_gui:
+            self.board.tkinter_print(self.score)
+        else:
+            print(f"--------------------SCORE: {self.score}--------------------")
+            self.board.print(highest=len(str(self.highest_tile)))
 
     def left(self):
         return self.move(1)
@@ -447,7 +450,43 @@ def run_game(track_primes=False):
             print(running_game.return_prime())
 
 
+def save_game_result_to_csv(file_name, model, score, duration, board):
+    import numpy as np
+    import os
+    import pandas as pd
+    """
+    Save game results to a CSV file.
 
+    Args:
+        file_name (str): The name of the CSV file.
+        model (str): The model used for the game.
+        score (int): The score achieved in the game.
+        duration (float): The duration of the game in seconds.
+        board (list): 2d array of the board when the game ended
+    """
+    # Create the 'saved games' folder if it doesn't exist
+    folder_path = os.path.join(os.getcwd(), 'saved games')
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+
+    # Check if the CSV file exists
+    file_path = os.path.join(folder_path, file_name)
+    if os.path.exists(file_path):
+        # Load the existing CSV file
+        df = pd.read_csv(file_path)
+    else:
+        # Create a new DataFrame
+        df = pd.DataFrame(columns=['Model', 'Score', 'Duration', 'Board'])
+
+    # Flatten the board into a 1D list
+    flattened_board = np.array(board).flatten().tolist()
+
+    # Create a new row with the provided data
+    new_row = pd.Series({'Model': model, 'Score': score, 'Duration': duration, 'Board': flattened_board})
+    df.loc[len(df)] = new_row
+
+    # Save the DataFrame to the CSV file
+    df.to_csv(file_path, index=False)
 
 
 
