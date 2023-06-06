@@ -37,7 +37,6 @@ class Board:
 
         for i in range(1, 5):
             for j in range(4):
-                print(f"3 on i, j = {i}, {j}")
                 self.tiles[i - 1][j] = tk.Canvas(self.window, width=100, height=100)
                 self.tiles[i - 1][j].grid(row=i, column=j)
 
@@ -124,10 +123,13 @@ class Board:
         for i in range(4):
             for j in range(4):
                 tile = self.board[i][j]
-                color = tile_colours[tile]
-                text_color = "#000000" if tile > 0 else "#FFFFFF"
-                self.tiles[i][j].create_rectangle(10, 10, 90, 90, fill=color)
-                self.tiles[i][j].create_text(50, 50, text=str(tile) if tile != 0 else '', fill=text_color,
+                if tile not in tile_colours:
+                    colour = "#2E2C26"
+                else:
+                    colour = tile_colours[tile]
+                text_colour = "#000000" if tile > 0 else "#FFFFFF"
+                self.tiles[i][j].create_rectangle(10, 10, 90, 90, fill=colour)
+                self.tiles[i][j].create_text(50, 50, text=str(tile) if tile != 0 else '', fill=text_colour,
                                              font=("Helvetica", 24))
         self.score_label.config(text="Score: " + str(score))
         self.window.update()
@@ -147,7 +149,7 @@ def new_window():
     return window
 
 class Game:
-    def __init__(self, window=None, track_primes: bool = False, board: Board = None) -> None:
+    def __init__(self, track_primes: bool = False, board: Board = None) -> None:
         self.track_primes: bool = track_primes
         self.prime_tracker: int = 1
         self.score: int = 0
@@ -452,27 +454,20 @@ def run_game(track_primes=False):
 
 
 if __name__ == '__main__':
-    from AI import MC2, RandomMoves
+    from AI import MC2, MC3, MC4
+
+    # g = Game()
+    # g.setup_board()
+    # m = MC2(g, verbose=True, sims_per_turn=100)
+    # m.run()
+    # g.board.window.mainloop()
+    # run_game()
 
     g = Game()
     g.setup_board()
-    m = MC2(g)
-    m.tmp()
-    os.system("clear")
+    m = MC4(g, verbose=True, sims_per_turn=100)
+    m.run()
     g.board.window.mainloop()
-    # run_game()
-
-    # m2 = RandomMoves(g)
-    # m2.run()
-
-    # from AI import MonteCarloTree
-    #
-    # g = Game()
-    # g.setup_board()
-    # g.print_board()
-    # print("set up board")
-    # m = MonteCarloTree(g, depth=5)
-    # m.run_simulation()
 
 # def keyboard_input():
 #
