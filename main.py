@@ -21,20 +21,25 @@ class Board:
             ]
         else:
             self.board: list = initial_board
-        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} BEFORE IF")
+
         if window is None:
             window = new_window()
-        if window == "SKIP_WINDOW":
-            window = 0
-        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} AFTER IF")
+
         self.window = window
-        print(f"IN BOARD INIT, GOT WINDOW = {window}, type {type(window)} END")
-        if window != "SKIP_WINDOW":
-            self.tiles = [[None for _ in range(4)] for _ in range(4)]
-            for i in range(4):
-                for j in range(4):
-                    self.tiles[i][j] = tk.Canvas(self.window, width=100, height=100)
-                    self.tiles[i][j].grid(row=i, column=j)
+
+        # for i in range(4):
+        #     self.score_label = tk.Label(self.window, text="Score: 0")
+        #     self.score_label.grid(row=0, column=i)
+        self.score_label = tk.Label(self.window, text="Score: 0")
+        self.score_label.grid(row=0)
+
+        self.tiles = [[None for _ in range(4)] for _ in range(4)]
+
+        for i in range(1, 5):
+            for j in range(4):
+                print(f"3 on i, j = {i}, {j}")
+                self.tiles[i - 1][j] = tk.Canvas(self.window, width=100, height=100)
+                self.tiles[i - 1][j].grid(row=i, column=j)
 
     def __deepcopy__(self, memo):
         # print("IN __deepcopy__")
@@ -44,17 +49,12 @@ class Board:
 
         memo[id(self)] = new_game
 
-        # copy all attributes, but ignore the Tkinter window
+        # copy all attributes, but ignore the Tkinter ones
         for k, v in self.__dict__.items():
-            if k in ('window', "tiles"):
-                # print("in if")
-                setattr(new_game, k, None)  # or whatever default value you prefer
-                # print("done if")
+            if k in ("window", "tiles", "score_label"):
+                setattr(new_game, k, None)
             else:
-                # print(f"BOARD in else for {k}: {v}, type: {type(v)}")
                 setattr(new_game, k, copy.deepcopy(v, memo))
-                # print(f"BOARD dn else for {k}: {v}")
-
         return new_game
 
     def add_tile(self, tile_value: int, x_coord: int, y_coord: int):
@@ -106,7 +106,7 @@ class Board:
                 # print(colr.color("32", back=tile_colours[32], fore="FFFFFF"))
             print("")
 
-    def tkinter_print(self):
+    def tkinter_print(self, score):
         tile_colours = {
             2048: "#EDC22E",
             1024: "#EDC23F",
@@ -129,6 +129,7 @@ class Board:
                 self.tiles[i][j].create_rectangle(10, 10, 90, 90, fill=color)
                 self.tiles[i][j].create_text(50, 50, text=str(tile) if tile != 0 else '', fill=text_color,
                                              font=("Helvetica", 24))
+        self.score_label.config(text="Score: " + str(score))
         self.window.update()
 
     def __getitem__(self, coordinate: tuple) -> int:
@@ -214,9 +215,9 @@ class Game:
         self.board.add_tile(tile_value, x, y)
 
     def print_board(self):
-        print(f"--------------------SCORE: {self.score}--------------------")
+        # print(f"--------------------SCORE: {self.score}--------------------")
         # self.board.print(highest=len(str(self.highest_tile)))
-        self.board.tkinter_print()
+        self.board.tkinter_print(self.score)
 
     def left(self):
         return self.move(1)
@@ -458,6 +459,7 @@ if __name__ == '__main__':
     m = MC2(g)
     m.tmp()
     os.system("clear")
+    g.board.window.mainloop()
     # run_game()
 
     # m2 = RandomMoves(g)
