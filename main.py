@@ -1,11 +1,6 @@
-import os
 import random
 import colr
-
-from pynput import keyboard
-from pynput.keyboard import Key
 from copy import copy
-
 import tkinter as tk
 import copy
 
@@ -107,6 +102,11 @@ class Board:
 
     def tkinter_print(self, score):
         tile_colours = {
+            65536: "569BE0",
+            32768: "#6BAED5",
+            16384: "#F0513B",
+            8192: "#27B053",
+            4096: "#FB736D",
             2048: "#EDC22E",
             1024: "#EDC23F",
             512: "#EDC850",
@@ -462,47 +462,12 @@ if __name__ == '__main__':
     # m.run()
     # g.board.window.mainloop()
     # run_game()
-
+    import time
+    start_time = time.time()
     g = Game()
     g.setup_board()
     m = MC4(g, verbose=True, sims_per_turn=100)
     m.run()
+    print(f"IT TOOK {time.time() - start_time}s to run")
     g.board.window.mainloop()
-
-# def keyboard_input():
-#
-#     def on_key_release(key):
-#
-#         if key == Key.right:
-#             print("Right key clicked")
-#             # global latest_key
-#             # latest_key = "Right"
-#         elif key == Key.left:
-#             print("Left key clicked")
-#         elif key == Key.up:
-#             print("Up key clicked")
-#         elif key == Key.down:
-#             print("Down key clicked")
-#         elif key == Key.esc:
-#             exit()
-#
-#     with keyboard.Listener(on_release=on_key_release) as listener:
-#         listener.join()
-
-# run_game(track_primes=True)
-#db2 = Down2(print_moves=False)
-#db2.run()
-
-# db1 = DownBot(print_moves=True)
-# db1.run()
-
-# m1 = ManyRuns(Down2, 50, print_moves=True)
-# m1.run()
-
-
-
-
-
-
-
 
