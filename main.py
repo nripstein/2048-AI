@@ -22,9 +22,6 @@ class Board:
 
         self.window = window
 
-        # for i in range(4):
-        #     self.score_label = tk.Label(self.window, text="Score: 0")
-        #     self.score_label.grid(row=0, column=i)
         self.score_label = tk.Label(self.window, text="Score: 0")
         self.score_label.grid(row=0)
 
@@ -133,6 +130,17 @@ class Board:
                                              font=("Helvetica", 24))
         self.score_label.config(text="Score: " + str(score))
         self.window.update()
+
+    def get_empty_tiles(self):
+        """
+        returns list of tuples (y, x) with empty squares
+        """
+        output_list = []
+        for y in range(4):
+            for x in range(4):
+                if self.board[y][x] == 0:
+                    output_list.append((y, x))
+        return output_list
 
     def __getitem__(self, coordinate: tuple) -> int:
         x, y = coordinate
@@ -404,21 +412,9 @@ class Game:
         return True
 
 
-
-
-
-
-#global latest_key
-# latest_key = "NONE"
-
-
-
-
-# keyboard_input()
-
 def run_game(track_primes=False):
     running_game = Game(track_primes=track_primes)
-    print(f"on any move, enter 'p' to return prime tracker")
+    # print(f"on any move, enter 'p' to return prime tracker")
     running_game.setup_board()
     running_game.display_updated_board()
 
@@ -487,7 +483,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4, MC5, RandomMoves
+    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6
 
     # g = Game()
     # g.setup_board()
@@ -499,10 +495,8 @@ if __name__ == '__main__':
     # start_time = time.time()
     g = Game()
     g.setup_board()
-    # m = MC5(g, verbose=True, sims_per_turn=100)
-    # m.run()
+    m = MC6(g, game_obj=Game, verbose=True, sims_per_turn=100)
+    m.run()
     # print(f"IT TOOK {time.time() - start_time}s to run")
     # g.board.window.mainloop()
-    tmp = RandomMoves(g)
-    tmp.run()
-    g.board.window.mainloop()
+
