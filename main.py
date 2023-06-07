@@ -244,8 +244,10 @@ class Game:
     def down(self):
         return self.move(3)
 
-    def move(self, direction: int, print_board: bool = True, illegal_warn: bool = True) -> bool:
-        """returns whether it was successful"""
+    def move(self, direction: int, print_board: bool = True, illegal_warn: bool = True, add_tile=True) -> bool:
+        """returns whether it was successful
+        :param add_tile (bool) whether to add a new tile after sucesfully moving
+        """
         # 0 = right, 1 = left, 2 = up, 3 = down
         if direction not in (0, 1, 2, 3):
             raise ValueError("Only directions 0-3 are allowed. 0 = right, 1 = left, 2 = up, 3 = down")
@@ -297,7 +299,8 @@ class Game:
             return False
 
         if not illegal_move:
-            self.add_new_tile()
+            if add_tile:
+                self.add_new_tile()
 
             # prime stuff. disabled by default because it would slow things down on large simulations
             if self.track_primes:
@@ -487,16 +490,69 @@ if __name__ == '__main__':
 
     # g = Game()
     # g.setup_board()
-    # m = MC2(g, verbose=True, sims_per_turn=100)
+    # m = MC5(g, verbose=True, sims_per_turn=100)
     # m.run()
     # g.board.window.mainloop()
     # run_game()
-    # import time
-    # start_time = time.time()
+
+
+    import time
+    start_time = time.time()
     g = Game()
     g.setup_board()
     m = MC6(g, game_obj=Game, verbose=True, sims_per_turn=100)
     m.run()
-    # print(f"IT TOOK {time.time() - start_time}s to run")
-    # g.board.window.mainloop()
+    print(f"IT TOOK {time.time() - start_time}s to run")
+    g.board.window.mainloop()
+
+
+    # trying MC6 in a position close to failure
+    # b2 = Board(initial_board=[[2, 4, 2, 8],
+    #                           [4, 2, 128, 2],
+    #                           [2, 4, 16, 4],
+    #                           [4, 2, 0, 0]])
+    # g2 = Game(board=b2)
+    # m2 = MC6(g2, game_obj=Game, verbose=True, sims_per_turn=100)
+    # m2.run()
+
+    # # working it out
+    # def get_possible_boards(board) -> tuple[list, list]:
+    #     """
+    #     takes current board, returns list of all possible board "responses"
+    #     :param board: board of time (Board) (custom object),
+    #     :return: ([boards with 2s], [boards with 4s])
+    #     """
+    #
+    #     # print("IN GET POSSIBLE BOARDS with baord =")
+    #     # board.print(2)
+    #     # print("DONE START OF IN GET POSSIBLE BOARDS with baord =")
+    #     boards2, boards4 = [], []
+    #     for new_tile_value in (2, 4):
+    #         for y, x in board.get_empty_tiles():
+    #             new_board = copy.deepcopy(board)  # THIS IS WHERE THE ERROR IS FROM
+    #             new_board.add_tile(tile_value=new_tile_value, x_coord=x, y_coord=y)
+    #             # print("MAGIC")
+    #             # new_board.print(2)
+    #             # time.sleep(1)
+    #             if new_tile_value == 2:
+    #                 boards2.append(new_board)
+    #             else:
+    #                 boards4.append(new_board)
+    #     # print("DONE POSSIBLE BOARDS")
+    #     return boards2, boards4  # MB the nan are caused by boards that cant get evaluated for some reason...?
+    # tmp_board = Board(initial_board=[[2, 2, 4, 2],
+    #                                  [128, 4, 16, 256],
+    #                                  [2, 32, 8, 2],
+    #                                  [0, 2, 4, 16]])
+    # tmp_board.print()
+    # a = tmp_board.get_empty_tiles()
+    # print(a)
+    # print("--")
+    # b = get_possible_boards(tmp_board)
+    # print(b)
+    # for typ in b:
+    #     for board in typ:
+    #         print("--")
+    #         board.print()
+
 
