@@ -301,7 +301,7 @@ class Game:
                 }
                 self.prime_tracker *= prime_direction_dict[direction]
         if print_board:
-            self.print_board()
+            self.display_updated_board()
 
         self.num_moves += 1
         return True
@@ -417,23 +417,13 @@ class Game:
 # keyboard_input()
 
 def run_game(track_primes=False):
-    # new start
-    # window = tk.Tk()
-    # window.title("2048 Game")
-
     running_game = Game(track_primes=track_primes)
     print(f"on any move, enter 'p' to return prime tracker")
     running_game.setup_board()
-    running_game.print_board()
-    # new end
-
-    # running_game = Game(track_primes)
-    # print(f"on any move, enter 'p' to return prime tracker")
-    # running_game.setup_board()
-    # running_game.print_board()
+    running_game.display_updated_board()
 
     while True:
-        #running_game.print_board()
+        #running_game.display_updated_board()
         move = input("direction (w, a, s, d): ")
         # 0 = right, 1 = left, 2 = up, 3 = down
 
@@ -470,12 +460,16 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
         os.makedirs(folder_path)
 
     # Check if the CSV file exists
-    file_path = os.path.join(folder_path, file_name)
+    file_path = os.path.join(folder_path, f"{file_name}.csv")
     if os.path.exists(file_path):
+        print(f"FILE PATH EXISTS: {file_path}")
         # Load the existing CSV file
         df = pd.read_csv(file_path)
+        print("LOADED DF:")
+        print(df)
     else:
         # Create a new DataFrame
+        print(f"FILE PATH DOESNT EXIST: {file_path}")
         df = pd.DataFrame(columns=['Model', 'Score', 'Duration', 'Board'])
 
     # Flatten the board into a 1D list
@@ -486,14 +480,14 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
     df.loc[len(df)] = new_row
 
     # Save the DataFrame to the CSV file
-    df.to_csv(file_path, index=False)
+    df.to_csv(f"{file_path}", index=False)
 
 
 
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4
+    from AI import MC2, MC3, MC4, MC5, RandomMoves
 
     # g = Game()
     # g.setup_board()
@@ -501,12 +495,14 @@ if __name__ == '__main__':
     # m.run()
     # g.board.window.mainloop()
     # run_game()
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
     g = Game()
     g.setup_board()
-    m = MC4(g, verbose=True, sims_per_turn=100)
-    m.run()
-    print(f"IT TOOK {time.time() - start_time}s to run")
+    # m = MC5(g, verbose=True, sims_per_turn=100)
+    # m.run()
+    # print(f"IT TOOK {time.time() - start_time}s to run")
+    # g.board.window.mainloop()
+    tmp = RandomMoves(g)
+    tmp.run()
     g.board.window.mainloop()
-
