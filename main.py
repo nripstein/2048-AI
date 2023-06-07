@@ -72,7 +72,12 @@ class Board:
 
     def print(self, highest=2):
         tile_colours = {
-            2048: "EDC22E",
+            65536: "569BE0",
+            32768: "#6BAED5",
+            16384: "#F0513B",
+            8192: "#27B053",
+            4096: "#FB736D",
+            2048: "#EDC22E",
             1024: "#EDC23F",
             512: "#EDC850",
             256: "#EDCC61",
@@ -91,9 +96,12 @@ class Board:
         for row in self.board:
             #print(f"higest2 = {highest2}")
             for tile in row:
-
                 # FFFFFF is white, 000000 is black
-                print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=tile_colours[tile], fore="000000"), end=" ")
+                if tile not in tile_colours:
+                    colour = "#2E2C26"
+                else:
+                    colour = tile_colours[tile]
+                print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=colour, fore="000000"), end=" ")
                 # print(colr.color("32", back=tile_colours[32], fore="FFFFFF"))
             print("")
 
@@ -486,7 +494,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6
+    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7
 
     # g = Game()
     # g.setup_board()
@@ -500,7 +508,7 @@ if __name__ == '__main__':
     start_time = time.time()
     g = Game()
     g.setup_board()
-    m = MC6(g, game_obj=Game, verbose=True, sims_per_turn=100)
+    m = MC7(g, game_obj=Game, verbose=True, sims_per_turn=100)
     m.run()
     print(f"IT TOOK {time.time() - start_time}s to run")
     g.board.window.mainloop()
