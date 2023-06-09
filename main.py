@@ -301,7 +301,7 @@ class Game:
                 }
                 self.prime_tracker *= prime_direction_dict[direction]
         if print_board:
-            self.print_board()
+            self.display_updated_board()
 
         self.num_moves += 1
         return True
@@ -418,13 +418,13 @@ class Game:
 
 def run_game(track_primes=False):
     # new start
-    # window = tk.Tk()
-    # window.title("2048 Game")
+    window = tk.Tk()
+    window.title("2048 Game")
 
     running_game = Game(track_primes=track_primes)
     print(f"on any move, enter 'p' to return prime tracker")
     running_game.setup_board()
-    running_game.print_board()
+    running_game.display_updated_board()
     # new end
 
     # running_game = Game(track_primes)
@@ -445,10 +445,10 @@ def run_game(track_primes=False):
             running_game.left()
         elif move == "d":
             running_game.right()
-
         elif move == "p":
             print(running_game.return_prime())
-
+        elif move == "exit":
+            exit()
 
 def save_game_result_to_csv(file_name, model, score, duration, board):
     import numpy as np
@@ -493,7 +493,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4
+    # from AI import MC2
 
     # g = Game()
     # g.setup_board()
@@ -501,12 +501,13 @@ if __name__ == '__main__':
     # m.run()
     # g.board.window.mainloop()
     # run_game()
-    import time
-    start_time = time.time()
-    g = Game()
-    g.setup_board()
-    m = MC4(g, verbose=True, sims_per_turn=100)
-    m.run()
-    print(f"IT TOOK {time.time() - start_time}s to run")
-    g.board.window.mainloop()
+    # import time
+    # start_time = time.time()
+    # g = Game()
+    # g.setup_board()
+    # m = MC2(g, verbose=True, sims_per_turn=100)
+    # m.run()
+    # print(f"IT TOOK {time.time() - start_time}s to run")
+    # g.board.window.mainloop()
+    run_game()
 
