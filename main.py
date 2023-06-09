@@ -1,9 +1,15 @@
+import os
 import random
 import colr
 from copy import copy
 import tkinter as tk
 import copy
 
+import numpy as np
+
+
+# todo
+# make islegal() method in Game() class which doesn't move any pieces but checks if a move is legal. should be just the move function without adding tile
 
 class Board:
     def __init__(self, window=None, initial_board=None):
@@ -54,7 +60,20 @@ class Board:
     def value_of_position(self, x_coord: int, y_coord: int) -> int:
         return self.board[y_coord][x_coord]
 
-    # this fn untested! it's important tho
+    def tile_coords(self, tile_value: int) -> list[tuple]:  # this worked when was only one tuple, rather than all of them
+        """finds the coordinates (as x, y tuple) of all occurrences of tile of value tile_value"""
+        output = []
+        for y, row in enumerate(self.board):
+            for x, tile in enumerate(row):
+                if tile == tile_value:
+                    return x, y
+                    # output.append((x, y))
+        # return output
+
+    def tile_values(self) -> np.ndarray:
+        """returns numpy array of the values of the tiles in no particular order"""
+        raise NotImplementedError("tile_values not implemented yet!")
+
     def move_tile(self, square1: tuple, square2: tuple, eat: bool = False) -> int:
         """returns how much score to add"""
         x1, y1 = square1
@@ -494,7 +513,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7
+    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7, MC8, MC9, MC10, MC11
 
     # g = Game()
     # g.setup_board()
@@ -505,62 +524,25 @@ if __name__ == '__main__':
 
 
     import time
-    start_time = time.time()
-    g = Game()
-    g.setup_board()
-    m = MC7(g, game_obj=Game, verbose=True, sims_per_turn=100)
-    m.run()
-    print(f"IT TOOK {time.time() - start_time}s to run")
-    g.board.window.mainloop()
+    i = 1
+    while True:
+        start_time = time.time()
+        g = Game(use_gui=False)
+        g.setup_board()
+        m = MC11(g, game_obj=Game, verbose=True, best_proportion=0.25)
+        m.run()
+        print(f"IT TOOK {time.time() - start_time}s to run on {i}")
+        i += 1
+        # start_time = time.time()
+        # g = Game(use_gui=False)
+        # g.setup_board()
+        # m = MC4(g, verbose=True)
+        # m.run()
+        # print(f"IT TOOK {time.time() - start_time}s to run on {i}")
+        # i += 1
+    # g.board.window.mainloop()
 
 
-    # trying MC6 in a position close to failure
-    # b2 = Board(initial_board=[[2, 4, 2, 8],
-    #                           [4, 2, 128, 2],
-    #                           [2, 4, 16, 4],
-    #                           [4, 2, 0, 0]])
-    # g2 = Game(board=b2)
-    # m2 = MC6(g2, game_obj=Game, verbose=True, sims_per_turn=100)
-    # m2.run()
 
-    # # working it out
-    # def get_possible_boards(board) -> tuple[list, list]:
-    #     """
-    #     takes current board, returns list of all possible board "responses"
-    #     :param board: board of time (Board) (custom object),
-    #     :return: ([boards with 2s], [boards with 4s])
-    #     """
-    #
-    #     # print("IN GET POSSIBLE BOARDS with baord =")
-    #     # board.print(2)
-    #     # print("DONE START OF IN GET POSSIBLE BOARDS with baord =")
-    #     boards2, boards4 = [], []
-    #     for new_tile_value in (2, 4):
-    #         for y, x in board.get_empty_tiles():
-    #             new_board = copy.deepcopy(board)  # THIS IS WHERE THE ERROR IS FROM
-    #             new_board.add_tile(tile_value=new_tile_value, x_coord=x, y_coord=y)
-    #             # print("MAGIC")
-    #             # new_board.print(2)
-    #             # time.sleep(1)
-    #             if new_tile_value == 2:
-    #                 boards2.append(new_board)
-    #             else:
-    #                 boards4.append(new_board)
-    #     # print("DONE POSSIBLE BOARDS")
-    #     return boards2, boards4  # MB the nan are caused by boards that cant get evaluated for some reason...?
-    # tmp_board = Board(initial_board=[[2, 2, 4, 2],
-    #                                  [128, 4, 16, 256],
-    #                                  [2, 32, 8, 2],
-    #                                  [0, 2, 4, 16]])
-    # tmp_board.print()
-    # a = tmp_board.get_empty_tiles()
-    # print(a)
-    # print("--")
-    # b = get_possible_boards(tmp_board)
-    # print(b)
-    # for typ in b:
-    #     for board in typ:
-    #         print("--")
-    #         board.print()
 
 
