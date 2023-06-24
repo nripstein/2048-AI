@@ -1,0 +1,182 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+% these two packages needed for argmax
+\usepackage{amsmath}
+\DeclareMathOperator*{\argmax}{argmax}
+
+% packages needed for pseudocode
+\usepackage{algorithm} 
+\usepackage{algpseudocode} 
+
+% Needed for subcaption for side-by-side figures
+\usepackage{subcaption}
+
+\title{2048 AI: Probabilistic Monte Carlo Tree Search}
+\author{Noah Ripstein}
+\date{June 2023}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+2048 is an addictive game which was originally released in 2014.  The game begins with two randomly placed tiles, each having a value of either 2 or 4, randomly placed on a 4x4 grid. The player can move the tiles in four directions: up, down, left, or right. When a direction is chosen, all tiles on the grid slide as far as possible in that direction, merging with any adjacent tiles of the same value to form a new tile with double the value.  The value of the new tile is added to the score. After the player's turn,  a new tile spawns in a random location; this new tile has a 90\% chance of being a 2, and a 10\% chance of being a 4.   The game ends when the board is filled with tiles and the player has no legal moves.
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[b]{0.45\textwidth}
+    \includegraphics[width=\textwidth]{original_ss.jpeg}
+    \caption{Original game}
+    \label{fig:original_ss}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.45\textwidth}
+    \includegraphics[width=\textwidth]{ss_of_mine.png}
+    \caption{My implementation}
+    \label{fig:ss_of_mine}
+  \end{subfigure}
+  \caption{Screenshots from original game and my implementation}
+  \label{fig:screenshots}
+\end{figure}
+%Discuss goal of game\\
+%how its played briefly\\
+%after the player selects a move, a new time spawns in a random empty location. It has a 90\% chance of being a 2, and a 10\% chance of being a 4.
+
+\section{The Decision Tree}
+
+One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves).  In general, there are $2(l)(m)$ possible states after the player's move, where $l$ is the number of legal moves, and $m$ is the number of empty spaces on the board.\\
+
+%\includegraphics[scale=0.2]{tree_1.jpeg}\\
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{tree_1.jpeg}
+\caption{Decision tree representing possible board states after each move}
+\label{fig:tree1}
+\end{figure}
+
+\section{Monte Carlo Tree Exploration: AI Designs}
+\subsection{Pure Monte Carlo Tree Search}
+The initial algorithm I employed is a Pure Monte Carlo Tree Search (Algorithm 1). This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
+
+\begin{equation}
+  \textrm{Selected Move} = \argmax_{move} \text{MCTS1}(move)
+\end{equation}
+
+
+This approach initiates from the green nodes in the game tree diagram (Fig. 2). From there, the algorithm proceeds through random exploration to reach the yellow and red child nodes, representing the spawning of a 2 or 4 tile in each possible location.
+
+% There are a few problems I identified with this approach.  Notice that it begins the search from a green node (Fig. 1), and reaches the yellow and red child nodes through random exploration. \\
+While this approach provides a comprehensive exploration of the game tree, it has significant limitations. The primary concern lies in the random nature of the search process. As a consequence, some of the simulated games performed during the Monte Carlo simulations may yield exceptionally poor results that are highly unlikely to occur in actual gameplay.  This lead me to want to discard a portion of those simulated games with particularly poor scores from consideration.
+
+Simply modifying Algorithm 1 to calculate the average score for a given move using only top-performing of simulated games would not adequately address this source of randomness, however.  There are two sources of randomness inherent in the Pure Monte Carlo Tree Search: randomness associated with game-play (which we aim to reduce), and randomness of tile spawns.  Discarding randomly played games with low scores in an attempt to address the former source of randomness might prevent the AI from evaluating branches of the tree which involve unlucky tiles spawning after the next turn.
+
+% can try an algo that punishes for bad score when 4 spawns, but not reward it when 4 has super high expected value bc it's such low probability
+% can also increase number of 4 explorations bc expected value accounts for differences in exploration rates/vs spawn rates
+% could also use delta performance. that way shit moves would be punished more I think 
+\begin{algorithm}
+    \caption{Pure Monte Carlo Tree Search}
+    \begin{algorithmic}[1]
+        \Function{MCTS1}{$\text{currentPosition, n}$}
+            \State $\text{directionScores} \gets \text{list()}$
+            \For{$\text{nextMove} \in \text{legalMoves}(\text{currentPosition})$}
+                \State $\text{nextMoveScores} \gets \text{list()}$
+                \For{$\text{gameNumber} \gets 1 \text{ to } n$}
+                    \State $\text{result} \gets \text{playRandomGame}(\text{currentPosition}, \text{nextMove})$
+                    \State $\text{nextMoveScores}.\text{append}(\text{result})$
+                \EndFor
+                \State $\text{averageScore} \gets \text{mean(nextMoveScores)}$
+                \State $\text{directionScores}.\text{append}(\text{averageScore})$
+            \EndFor
+            % \State $\text{bestMove} \gets \text{legalMoves}(\text{currentPosition})[\text{scores}.\text{argmax}()]$
+            \State \textbf{return} $\text{directionScores}$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Probabilistic Monte Carlo Tree Search}
+Algorithm 2 aims to address the concerns raised about Algorithm 1 in section 3.1.  Where Algorithm 1 begins Monte Carlo simulations from the board position after a player's move (green nodes in Figure 2), Algorithm 2 begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  
+
+The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{2i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.
+
+\begin{equation}
+  \label{eq:expected_value}
+  E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}R_{2i} + \frac{1}{10}R_{4i}\right)
+\end{equation}
+
+\begin{equation}
+  \textrm{Selected Move} = \argmax_{move} E[move]
+\end{equation}
+
+The subtle change in initial board position for Monte Carlo simulations facilitates more powerful probabilistic inference in two ways.  THIS NEEDS TO BE REWORDED
+
+
+
+
+\begin{enumerate}
+  \item A portion of the games explored from a given node with particularly poor performance can be discarded.  This will increase the projected score associated with a node by reducing the impact of "unlucky" random moves, but will not discard simulations with low scores because of "unlucky" tiles spawning on the next turn.
+  \item can guarantee at least 3 explores of 4 tiles bc 3 is way better than 1, but not much slower (dont need 9x as many 2s as 4s explored)
+\end{enumerate}
+
+
+
+% CHATGPT3 CONDENSED
+\begin{algorithm}
+    \caption{Probabilistic Monte Carlo Tree Search} 
+    \begin{algorithmic}[1]
+        \Function{MCTS2}{$\text{currentPosition, nodeSims, bestProportion}$}
+            \State $\text{directionScores} \gets \text{list()}$
+            \For{$\text{nextMove} \in \text{legalMoves}(\text{currentPosition})$}
+                \State $\text{node2Scores} \gets \text{list()}$
+                \State $\text{node4Scores} \gets \text{list()}$
+                \For{$\text{childBoard} \in \text{possibleTileSpawns(nextMove)}$}
+                    \State $\text{childBoardScores} \gets \text{list()}$
+                    \For{$\text{gameNumber} \gets 1 \text{ to }\text{nodeSims[childBoard]}$}
+                        \State $\text{result} \gets \text{playRandomChildGame}(\text{currentPosition}, \text{nextMove}, \text{childBoard})$
+                        \State $\text{childBoardScores}.\text{append}(\text{result})$
+                    \EndFor
+                    \If{$\text{childBoard} \text{ has 4 tile}$}
+                        \State $\text{node4Scores}.\text{append}(\text{childBoardScores})$
+                    \Else
+                        \State $\text{node2Scores}.\text{append}(\text{childBoardScores})$
+                    \EndIf
+                \EndFor
+                \State $\text{node2Scores} \gets \text{sort(node2Scores, descending=True)}$
+                \State $\text{node4Scores} \gets \text{sort(node2Scores, descending=True)}$
+                \State $\text{topNode2Scores} \gets \text{node2Scores[0:\textbf{len}(node2Scores)*bestProportion]}$
+                \State $\text{topNode4Scores} \gets \text{node2Scores[0:\textbf{len}(node4Scores)*bestProportion]}$
+                \State $\text{directionScore} \gets \text{expectedValue(topNode2Scores, topNode4Scores)}$
+                \State $\text{directionScores}.\text{append}(\text{topNextMoveScores})$
+            \EndFor
+            \State \textbf{return} $\text{directionScores}$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\section{Next Move Selection}
+The aim is to maximize the expected score.  Expected value calculations are helpful for this.  Let $move_j$ be the $j$th legal move in the current game state, $\overline{S_{n_i}}$ be the average score obtained in the $i$th node of the Monte Carlo search with tile value $n$ as parent, and $m$ be the number of empty tiles (given by the cardinality of $\overline{S_{n_i}}$). % THIS NEEDS REWORDING\\
+TALK ABOUT HOW THE AVERAGE THING ISNT A GREAT ESTIMATE OF PAYOUT. THEN CAN ALSO MENTION HOW THAT WOULD BE GOOD FOR FUTURE DIRECTIONS
+$$E[move_j] = \sum_{i=1}^m \left(\frac{9}{10}\frac{1}{m}\overline{S_{2_i}} + \frac{1}{10}\frac{1}{m}\overline{S_{4_i}}\right)$$
+$$E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}\overline{S_{2_i}} + \frac{1}{10}\overline{S_{4_i}}\right)$$
+$$\textrm{Selected Move} = \argmax_{move} E[move]$$
+
+\section{Results}
+Have chart of \% reached 2048, 4096, etc, and avg score for each model. probs need each of them at 100 runs.
+
+can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.
+
+\section{Future Directions}
+Use heuristics\\
+Note that part of the challenge here was not to use heuristics
+https://arxiv.org/abs/2110.10374
+These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
+
+
+
+
+\end{document}
+
+
