@@ -12,6 +12,12 @@
 % Needed for subcaption for side-by-side figures
 \usepackage{subcaption}
 
+% package to indent first paragraph after section header
+\usepackage{indentfirst}
+
+% make tables and stuff stay in correct section
+\usepackage{float}
+
 \title{2048 AI: Probabilistic Monte Carlo Tree Search}
 \author{Noah Ripstein}
 \date{June 2023}
@@ -48,7 +54,7 @@
 
 \section{The Decision Tree}
 
-One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves).  In general, there are $2(l)(m)$ possible states after the player's move, where $l$ is the number of legal moves, and $m$ is the number of empty spaces on the board.\\
+One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves which do not combine any tiles).  In general, there are $2(l)(m)$ possible states after the player's move, where $l$ is the number of legal moves, and $m$ is the number of empty spaces on the board after tiles have been combined from the player's turn.
 
 %\includegraphics[scale=0.2]{tree_1.jpeg}\\
 \begin{figure}[H]
@@ -100,31 +106,30 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 \subsection{Probabilistic Monte Carlo Tree Search}
 Algorithm 2 aims to address the concerns raised about Algorithm 1 in section 3.1.  Where Algorithm 1 begins Monte Carlo simulations from the board position after a player's move (green nodes in Figure 2), Algorithm 2 begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  
 
-The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{2i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.
+The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{4i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.
 
 \begin{equation}
   \label{eq:expected_value}
-  E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}R_{2i} + \frac{1}{10}R_{4i}\right)
+  E[move] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}R_{2i} + \frac{1}{10}R_{4i}\right)
 \end{equation}
 
 \begin{equation}
   \textrm{Selected Move} = \argmax_{move} E[move]
 \end{equation}
 
-The subtle change in initial board position for Monte Carlo simulations facilitates more powerful probabilistic inference in two ways.  THIS NEEDS TO BE REWORDED
-
-
-
+Compared to the Pure Monte Carlo Tree Search, the probabilistic approach facilitates more sophisticated inference in two ways. 
 
 \begin{enumerate}
-  \item A portion of the games explored from a given node with particularly poor performance can be discarded.  This will increase the projected score associated with a node by reducing the impact of "unlucky" random moves, but will not discard simulations with low scores because of "unlucky" tiles spawning on the next turn.
-  \item can guarantee at least 3 explores of 4 tiles bc 3 is way better than 1, but not much slower (dont need 9x as many 2s as 4s explored)
+  \item A portion of the games explored from a particular node with particularly poor performance can be discarded.  This will increase the projected score associated with a node by reducing the impact of "unlucky" random moves, but will not discard simulations with low scores because of "unlucky" tiles spawning on the next turn. NEEDS TO BE REWORDED
+  \item Unlike the Pure Monte Carlo Tree Search, where game states in which a 2 spawns after the players turn are explored 9x as frequently as those in which a 4 spawns, the number of Monte Carlo searches on each node type can be made independent.  This can guarantee that all nodes are explored at least 3 times, which gives far more information than a node being explored 1 time, but does not significantly increase runtime.  
+ 
 \end{enumerate}
 
+Algorithm 2 implements Equation 2 and Equation 3 in a manner which makes customizable the number of Monte Carlo searches per node (nodeSims) and proportion of top-performing simulated scores to keep (bestProportion).  Both of these parameters impact the reported score associated with a direction, $R_{ni}$, in Equation 2.  nodeSims is a dictionary which maps the number of empty tiles on the board to the number of Monte Carlo simulations to be performed, with different values for 2 spawns and 4 spawns.  The expectedValue function referenced in Algorithm 2 is given by Equation 2.
 
 
 % CHATGPT3 CONDENSED
-\begin{algorithm}
+\begin{algorithm}[H]
     \caption{Probabilistic Monte Carlo Tree Search} 
     \begin{algorithmic}[1]
         \Function{MCTS2}{$\text{currentPosition, nodeSims, bestProportion}$}
@@ -156,23 +161,46 @@ The subtle change in initial board position for Monte Carlo simulations facilita
     \end{algorithmic}
 \end{algorithm}
 
-\section{Next Move Selection}
-The aim is to maximize the expected score.  Expected value calculations are helpful for this.  Let $move_j$ be the $j$th legal move in the current game state, $\overline{S_{n_i}}$ be the average score obtained in the $i$th node of the Monte Carlo search with tile value $n$ as parent, and $m$ be the number of empty tiles (given by the cardinality of $\overline{S_{n_i}}$). % THIS NEEDS REWORDING\\
-TALK ABOUT HOW THE AVERAGE THING ISNT A GREAT ESTIMATE OF PAYOUT. THEN CAN ALSO MENTION HOW THAT WOULD BE GOOD FOR FUTURE DIRECTIONS
-$$E[move_j] = \sum_{i=1}^m \left(\frac{9}{10}\frac{1}{m}\overline{S_{2_i}} + \frac{1}{10}\frac{1}{m}\overline{S_{4_i}}\right)$$
-$$E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}\overline{S_{2_i}} + \frac{1}{10}\overline{S_{4_i}}\right)$$
-$$\textrm{Selected Move} = \argmax_{move} E[move]$$
+%\section{Next Move Selection}
+%The aim is to maximize the expected score.  Expected value calculations are helpful for this.  Let $move_j$ be the $j$th legal move in the current game state, $\overline{S_{n_i}}$ be the average score obtained in the $i$th node of the Monte Carlo search with tile value $n$ as parent, and $m$ be the number of empty tiles (given by the cardinality of $\overline{S_{n_i}}$). % THIS NEEDS REWORDING\\
+%TALK ABOUT HOW THE AVERAGE THING ISNT A GREAT ESTIMATE OF PAYOUT. THEN CAN ALSO MENTION HOW THAT WOULD BE GOOD FOR FUTURE DIRECTIONS
+%$$E[move_j] = \sum_{i=1}^m \left(\frac{9}{10}\frac{1}{m}\overline{S_{2_i}} + \frac{1}{10}\frac{1}{m}\overline{S_{4_i}}\right)$$
+%$$E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}\overline{S_{2_i}} + \frac{1}{10}\overline{S_{4_i}}\right)$$
+%$$\textrm{Selected Move} = \argmax_{move} E[move]$$
 
 \section{Results}
 Have chart of \% reached 2048, 4096, etc, and avg score for each model. probs need each of them at 100 runs.
 
-can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.
+can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.\\
+
+
+
+\begin{table}[H]
+  \caption{Results of Different Models}
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    & 2048 [\%] & 4096 [\%] & 8192 [\%] & 16384 [\%] & Avg. Score \\
+    \hline
+    Pure MCTS & & & & & \\
+    \hline
+    Proba. MCTS (top 100\%) & & & & & \\
+    \hline
+    Proba. MCTS (top 75\%) & & & & & \\
+    \hline
+    Proba. MCTS (top 50\%) & & & & & \\
+    \hline
+    Proba. MCTS (top 25\%) & & & & & \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \section{Future Directions}
 Use heuristics\\
 Note that part of the challenge here was not to use heuristics
 https://arxiv.org/abs/2110.10374
 These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
+
+dynamically switch to minimax or expectimax when there are few open tiles.
 
 
 
