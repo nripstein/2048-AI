@@ -15,7 +15,7 @@
 % package to indent first paragraph after section header
 \usepackage{indentfirst}
 
-% make tables and stuff stay in correct section
+% make tables and figures stay in correct section
 \usepackage{float}
 
 \title{2048 AI: Probabilistic Monte Carlo Tree Search}
@@ -80,9 +80,7 @@ While this approach provides a comprehensive exploration of the game tree, it ha
 
 Simply modifying Algorithm 1 to calculate the average score for a given move using only top-performing of simulated games would not adequately address this source of randomness, however.  There are two sources of randomness inherent in the Pure Monte Carlo Tree Search: randomness associated with game-play (which we aim to reduce), and randomness of tile spawns.  Discarding randomly played games with low scores in an attempt to address the former source of randomness might prevent the AI from evaluating branches of the tree which involve unlucky tiles spawning after the next turn.
 
-% can try an algo that punishes for bad score when 4 spawns, but not reward it when 4 has super high expected value bc it's such low probability
-% can also increase number of 4 explorations bc expected value accounts for differences in exploration rates/vs spawn rates
-% could also use delta performance. that way shit moves would be punished more I think 
+% could also use delta performance. that way poor moves would be punished more I think 
 \begin{algorithm}
     \caption{Pure Monte Carlo Tree Search}
     \begin{algorithmic}[1]
@@ -106,7 +104,7 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 \subsection{Probabilistic Monte Carlo Tree Search}
 Algorithm 2 aims to address the concerns raised about Algorithm 1 in section 3.1.  Where Algorithm 1 begins Monte Carlo simulations from the board position after a player's move (green nodes in Figure 2), Algorithm 2 begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  
 
-The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{4i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.
+The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{4i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.  Equation 2 is derived in the Appendix section.
 
 \begin{equation}
   \label{eq:expected_value}
@@ -120,7 +118,7 @@ The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value
 Compared to the Pure Monte Carlo Tree Search, the probabilistic approach facilitates more sophisticated inference in two ways. 
 
 \begin{enumerate}
-  \item A portion of the games explored from a particular node with particularly poor performance can be discarded.  This will increase the projected score associated with a node by reducing the impact of "unlucky" random moves, but will not discard simulations with low scores because of "unlucky" tiles spawning on the next turn. NEEDS TO BE REWORDED
+  \item By discarding a portion of explored games with poor results at each node, the impact of the Monte Carlo search playing out extremely poor moves due to chance can be mitigated.  Crucially, simulations with lower scores due to "unlucky" tile spawns in the subsequent turn are not eliminated, ensuring a more comprehensive exploration of potential game outcomes.
   \item Unlike the Pure Monte Carlo Tree Search, where game states in which a 2 spawns after the players turn are explored 9x as frequently as those in which a 4 spawns, the number of Monte Carlo searches on each node type can be made independent.  This can guarantee that all nodes are explored at least 3 times, which gives far more information than a node being explored 1 time, but does not significantly increase runtime.  
  
 \end{enumerate}
@@ -194,7 +192,7 @@ can have some sort of Bayesian BDF bc can model the proportion of time it reache
   \end{tabular}
 \end{table}
 
-\section{Future Directions}
+\section{Future Directions (not done)}
 Use heuristics\\
 Note that part of the challenge here was not to use heuristics
 https://arxiv.org/abs/2110.10374
@@ -202,7 +200,10 @@ These stanford math profs made a deep reinforcement learning model that doesnt u
 
 dynamically switch to minimax or expectimax when there are few open tiles.
 
-
+\appendix
+\section*{Appendix: E[$move$] Derivation (not done)}
+In general, the expected value of a task $X$ is given by $E[$X$] = \sum_{i=1}^n$
+$$ E $$
 
 
 \end{document}
