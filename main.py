@@ -1,15 +1,18 @@
-import os
 import random
 import colr
 from copy import copy
 import tkinter as tk
 import copy
-
 import numpy as np
-
 
 # todo
 # make islegal() method in Game() class which doesn't move any pieces but checks if a move is legal. should be just the move function without adding tile
+
+def new_window():
+    window = tk.Tk()
+    window.title("2048 Game")
+    return window
+
 
 class Board:
     def __init__(self, window=None, initial_board=None):
@@ -39,7 +42,6 @@ class Board:
                 self.tiles[i - 1][j].grid(row=i, column=j)
 
     def __deepcopy__(self, memo):
-        # print("IN __deepcopy__")
         # create a new game instance
         cls = self.__class__
         new_game = cls.__new__(cls)
@@ -146,14 +148,14 @@ class Board:
         }
         for i in range(4):
             for j in range(4):
-                tile = self.board[i][j]
-                if tile not in tile_colours:
+                tile_value = self.board[i][j]
+                if tile_value not in tile_colours:
                     colour = "#2E2C26"
                 else:
-                    colour = tile_colours[tile]
-                text_colour = "#000000" if tile > 0 else "#FFFFFF"
+                    colour = tile_colours[tile_value]
+                text_colour = "#000000" if tile_value > 0 else "#FFFFFF"
                 self.tiles[i][j].create_rectangle(10, 10, 90, 90, fill=colour)
-                self.tiles[i][j].create_text(50, 50, text=str(tile) if tile != 0 else '', fill=text_colour,
+                self.tiles[i][j].create_text(50, 50, text=str(tile_value) if tile_value != 0 else '', fill=text_colour,
                                              font=("Helvetica", 24))
         self.score_label.config(text="Score: " + str(score))
         self.window.update()
@@ -177,11 +179,6 @@ class Board:
         x, y = coordinate
         self.board[y][x] = value
 
-
-def new_window():
-    window = tk.Tk()
-    window.title("2048 Game")
-    return window
 
 class Game:
     def __init__(self, track_primes: bool = False, board: Board = None, use_gui: bool = True) -> None:
@@ -442,11 +439,12 @@ class Game:
         return True
 
 
-def run_game(track_primes=False):
-    running_game = Game(track_primes=track_primes)
-    # print(f"on any move, enter 'p' to return prime tracker")
-    running_game.setup_board()
-    running_game.display_updated_board()
+def run_game(game=None):
+    if game is None:
+        game = Game()
+        # print(f"on any move, enter 'p' to return prime tracker")
+        game.setup_board()
+    game.display_updated_board()
 
     while True:
         #running_game.display_updated_board()
@@ -454,16 +452,16 @@ def run_game(track_primes=False):
         # 0 = right, 1 = left, 2 = up, 3 = down
 
         if move == "s":
-            running_game.down()
+            game.down()
         elif move == "w":
-            running_game.up()
+            game.up()
         elif move == "a":
-            running_game.left()
+            game.left()
         elif move == "d":
-            running_game.right()
+            game.right()
 
         elif move == "p":
-            print(running_game.return_prime())
+            print(game.return_prime())
 
 
 def save_game_result_to_csv(file_name, model, score, duration, board):
@@ -513,35 +511,61 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7, MC8, MC9, MC10, MC11
-
-    # g = Game()
-    # g.setup_board()
-    # m = MC5(g, verbose=True, sims_per_turn=100)
-    # m.run()
-    # g.board.window.mainloop()
-    # run_game()
+    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7, MC8, MC9, MC10, MC11, MC12, ExplicitTree1
 
 
+    # run_game(False)
+    depth_dict_2 = {
+        15: 12,
+        14: 12,
+        13: 12,
+        12: 12,
+        11: 12,
+        10: 16,
+        9: 16,
+        8: 20,
+        7: 20,
+        6: 84,
+        5: 100,
+        4: 125,
+        3: 165,
+        2: 250,
+        1: 500
+    }
+    depth_dict_4 = {
+        15: 8,
+        14: 8,
+        13: 8,
+        12: 8,
+        11: 8,
+        10: 8,
+        9: 12,
+        8: 12,
+        7: 12,
+        6: 12,
+        5: 20,
+        4: 24,
+        3: 28,
+        2: 52,
+        1: 100
+    }
     import time
     i = 1
     while True:
         start_time = time.time()
         g = Game(use_gui=False)
         g.setup_board()
-        m = MC11(g, game_obj=Game, verbose=True, best_proportion=0.25)
+        m = MC12(g, game_obj=Game, verbose=False, best_proportion=1, depth2=None, depth4=None)
         m.run()
         print(f"IT TOOK {time.time() - start_time}s to run on {i}")
         i += 1
-        # start_time = time.time()
-        # g = Game(use_gui=False)
-        # g.setup_board()
-        # m = MC4(g, verbose=True)
-        # m.run()
-        # print(f"IT TOOK {time.time() - start_time}s to run on {i}")
-        # i += 1
+
     # g.board.window.mainloop()
 
+    # g = Game(use_gui=False)
+    # g.setup_board()
+    # AI = ExplicitTree1(g, Game, 2)
+    # AI.tmp()
 
 
 
