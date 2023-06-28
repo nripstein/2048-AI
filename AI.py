@@ -1611,6 +1611,8 @@ class MC12:
             }
         else:
             self.depth_dict_2 = depth2
+        self.normal_strength = depth2 is None or depth4 is None
+
         self.almost_lost_fix = 0
 
     @staticmethod
@@ -1754,8 +1756,12 @@ class MC12:
                 self.main_game.display_updated_board()
         total_time = time.time() - start_time
         print(f"GAME OVER: SCORE = {self.main_game.score}")
+        if self.normal_strength:
+            strength = "normal"
+        else:
+            strength = "strong"
         save_game_result_to_csv("MC12",
-                                f"MC12_top_{self.best_proportion*100:.1f}_normal%",
+                                f"MC12_top_{self.best_proportion*100:.1f}_{strength}%",
                                 self.main_game.score,
                                 total_time, self.main_game.board.board,
                                 # other_data={"2dict": self.depth_dict_2, "4dict": self.depth_dict_4},
