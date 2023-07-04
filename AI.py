@@ -1563,8 +1563,7 @@ class MC11:
 
 class MC12:
     """
-    Same as MC10 but customizable depth dicts for 2 and 4 (and higher defaults for all 4s)
-    HOLY SHIT REALIZED MC10 AND 12 SPAWN 2S WHEN I MEAN TO SPAWN 4S. SHOULD INCREASE PERFORMANCE WITH NOW IMPLIMENTED FIX!!
+    WORKS GREAT
     """
     def __init__(self, game, game_obj, depth4: dict = None, depth2: dict = None, best_proportion: float = 1, verbose: bool = True) -> None:
         self.main_game = game
@@ -1676,14 +1675,13 @@ class MC12:
 
         scores = np.array(scores)
         if np.all(scores == self.main_game.score):  # if all direction scores are equal to the current then its about to end, which can cause an error. this makes it randomly cycle thru picking each move, which guarantees a legal one will be made so the game can end
-            print("MADE IT IN")
+            # print("MADE IT IN")
 
             best_direction = self.almost_lost_fix
             self.almost_lost_fix += 1
             self.almost_lost_fix = self.almost_lost_fix % 4
         else:  # the normal case
             best_direction = np.argmax(scores)
-
 
         if self.verbose:
             print(f"{np.array(scores).round()}\t"
@@ -1768,6 +1766,219 @@ class MC12:
                                 )
 
 
+class MC13:
+    """
+    uses gamma and stuff
+    """
+    def __init__(self, game, game_obj, depth4: dict = None, depth2: dict = None, best_proportion: float = 1, verbose: bool = True) -> None:
+        self.main_game = game
+        self.game_obj = game_obj
+        self.verbose = verbose
+        self.best_proportion = best_proportion
+        if depth4 is None:
+            self.depth_dict_4 = {
+                15: 3,
+                14: 3,
+                13: 3,
+                12: 3,
+                11: 3,
+                10: 3,
+                9: 3,
+                8: 3,
+                7: 3,
+                6: 3,
+                5: 5,
+                4: 7,
+                3: 20,
+                2: 40,
+                1: 80
+            }
+        else:
+            self.depth_dict_4 = depth4
+        if depth2 is None:
+            self.depth_dict_2 = {
+                15: 9,  # 135
+                14: 9,  # 126
+                13: 9,  # 117
+                12: 9,  # 108
+                11: 9,  # 99
+                10: 9,  # 90
+                9: 9,  # 81
+                8: 18,  # 144
+                7: 18,  # 126
+                6: 18,  # 108
+                5: 36,  # 180
+                4: 54,  # 216
+                3: 125,  # 243
+                2: 250,  # 234
+                1: 500  # 225
+            }
+        else:
+            self.depth_dict_2 = depth2
+        self.normal_strength = depth2 is None or depth4 is None
+
+        self.almost_lost_fix = 0
+
+    @staticmethod
+    def one_game(game):
+        """
+        Where all the magic happens: plays random moves until the game is over
+        args:
+            game (Game): game object to manipulate
+        """
+        while not game.game_over_check():
+            current_direction = np.random.randint(0, 4)
+            game.move(current_direction, print_board=False, illegal_warn=False)
+        else:
+            return game.score
+
+    def n_games(self):
+
+
+        move_dict = {0: "right", 1: "left", 2: "up", 3: "down"}
+        projected_scores = []
+        immediate_scores = []
+        for direction in range(4):
+            game_copy = copy.deepcopy(self.main_game)
+
+            if not game_copy.move(direction, print_board=False, illegal_warn=False, add_tile=False):
+                # print(f"illegal to move {move_dict[direction]}")  # illegal warn but specifies direction
+                immediate_scores.append(game_copy.score)
+                projected_scores.append(0)
+            else:
+                current_score = game_copy.score
+                immediate_scores.append(current_score)
+
+                # take board we're currently working on, get list of all possible tiles that could spawn
+                boards2, boards4 = self.get_possible_boards(game_copy.board)
+
+                num_empty_tiles = len(boards2)
+                direction_scores_to_avg2, direction_scores_to_avg4 = [], []
+                for board in boards4:  # for each board, do necessary depth
+                    inner_scores4 = []
+                    for depth in range(self.depth_dict_4[num_empty_tiles]):
+                        # make new game obj to play on where
+                        current_game_obj = self.game_obj(board=board, use_gui=False)
+                        current_game_obj.score = current_score
+
+                        current_inner_score = self.one_game(copy.deepcopy(current_game_obj))
+                        inner_scores4.append(current_inner_score)
+                    direction_scores_to_avg4.append(inner_scores4)
+
+                for board in boards2:  # this can be condensed, only diff is *9 in second for statement
+                    inner_scores2 = []
+                    for depth in range(self.depth_dict_2[num_empty_tiles]):
+                        # make new game obj
+                        current_game_obj = self.game_obj(board=board, use_gui=False)
+                        current_game_obj.score = current_score
+
+                        current_inner_score = self.one_game(copy.deepcopy(current_game_obj))
+                        inner_scores2.append(current_inner_score)
+                    direction_scores_to_avg2.append(inner_scores2)
+
+
+                projected_scores.append(self.expected_value(direction_scores_to_avg4, direction_scores_to_avg2, num_empty_tiles))
+
+                # finish evaluation, then add piece (because we need to generate states assuming the piece isn't there)
+                game_copy.add_new_tile()
+
+        projected_scores = np.array(projected_scores)
+        immediate_scores = np.array(immediate_scores)
+        if np.all(projected_scores == self.main_game.score):  # if all direction projected_scores are equal to the current then its about to end, which can cause an error. this makes it randomly cycle thru picking each move, which guarantees a legal one will be made so the game can end
+            # print("MADE IT IN")
+
+            best_direction = self.almost_lost_fix
+            self.almost_lost_fix += 1
+            self.almost_lost_fix = self.almost_lost_fix % 4
+        else:  # the normal case
+            value_of_each_direction = self.discounted_value(immediate_scores, projected_scores)
+            best_direction = np.argmax(projected_scores)
+
+        if self.verbose:
+            print(f"{np.array(projected_scores).round()}\t"
+                  f"going {move_dict[best_direction]}\t"
+                  f"score: {self.main_game.score}\t"
+                  f"proj score: {round(max(projected_scores))}\n")
+
+        self.main_game.move(best_direction)  # make the move
+        if self.verbose and self.main_game.use_gui:
+            self.main_game.board.print()
+        return True  # returns true for continuing
+
+
+    def discounted_value(self, immediate_scores: np.ndarray, projected_scores: np.ndarray) -> np.ndarray:
+        pass
+
+
+    def expected_value(self, scores4, scores2, num_empty):
+        """
+        Calculate the expected value based on scores4 and scores2 arrays. Uses top 2 values only
+        WHITEBOARD CALCULATION
+        Args:
+            scores4 (list or ndarray): Scores monte carlo tree got for 4 spawning next.
+            scores2 (list or ndarray): Scores monte carlo tree got for 2 spawning next.
+            num_empty (int): Number of empty cells in the game board.
+
+        Returns:
+            float: The expected value.
+        """
+        scores2, scores4 = np.array(scores2), np.array(scores4)
+
+        scores2_top = np.partition(scores2, -math.ceil((scores2.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores2.shape[1]) * self.best_proportion):]  # had the math.ceil... has 2 so it would take the top 2. now it takes top half
+
+        if scores4.shape[1] < 2:
+            scores4_top = scores4
+        else:
+            scores4_top = np.partition(scores4, -math.ceil((scores4.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores4.shape[1]) * self.best_proportion):]  # replace the 2s with whatever length needed
+
+        expected_value = 0
+        for node_scores in scores2_top:
+            expected_value += np.average(node_scores) * 0.9 * 1/ num_empty
+        # print(f"EXPECTED AFTER 2s {expected_value}")
+        for node_scores in scores4_top:
+            expected_value += np.average(node_scores) * 0.1 * 1/ num_empty
+        # print(f"EXPECTED AFTER 4s {expected_value}")
+        return expected_value
+
+    @staticmethod
+    def get_possible_boards(board) -> tuple[list, list]:
+        """
+        takes current board, returns list of all possible board "responses"
+        :param board: board of time (Board) (custom object),
+        :return: ([boards with 2s], [boards with 4s])
+        """
+
+        boards2, boards4 = [], []
+        for new_tile_value in (2, 4):
+            for y, x in board.get_empty_tiles():
+                new_board = copy.deepcopy(board)
+                new_board.add_tile(tile_value=2, x_coord=x, y_coord=y)
+
+                if new_tile_value == 2:
+                    boards2.append(new_board)
+                else:
+                    boards4.append(new_board)
+        return boards2, boards4
+
+    def run(self):
+        start_time = time.time()
+        while not self.main_game.game_over_check():
+            self.n_games()
+
+            if self.main_game.use_gui and self.verbose:
+                self.main_game.display_updated_board()
+        total_time = time.time() - start_time
+        print(f"GAME OVER: SCORE = {self.main_game.score}")
+        if self.normal_strength:
+            strength = "normal"
+        else:
+            strength = "strong"
+        save_game_result_to_csv("MC12",
+                                f"MC12_top_{self.best_proportion*100:.1f}_{strength}%",
+                                self.main_game.score,
+                                total_time, self.main_game.board.board,
+                                # other_data={"2dict": self.depth_dict_2, "4dict": self.depth_dict_4},
+                                )
 
 
 class ExplicitTree1:

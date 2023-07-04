@@ -553,12 +553,14 @@ if __name__ == '__main__':
     i = 1
     while True:
         start_time = time.time()
-        g = Game(use_gui=False)
+        g = Game(use_gui=True)
         g.setup_board()
         m = MC12(g, game_obj=Game, verbose=False, best_proportion=1, depth2=None, depth4=None)
         m.run()
         print(f"IT TOOK {time.time() - start_time}s to run on {i}")
         i += 1
+    # https: // builtin.com / machine - learning / markov - decision - process BELLMAN BELLMAN EXPECTATION EQUATION FOR MARKOV REWARD PROCESS (MRP)
+
 
     # g.board.window.mainloop()
 
