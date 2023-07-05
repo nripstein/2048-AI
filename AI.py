@@ -37,14 +37,22 @@ def save_game_result_to_csv(file_name, model, score, duration, board, other_data
     # Flatten the board into a 1D list
     flattened_board = np.array(board).flatten().tolist()
 
-    if other_data is not None:
-        # Add other_data columns to the DataFrame
-        for key, value in other_data.items():
-            df[key] = value
+    # if other_data is not None:
+    #     # Add other_data columns to the DataFrame
+    #     for key, value in other_data.items():
+    #         df[key] = value
 
     # Create a new row with the provided data
-    new_row = pd.Series({'Model': model, 'Score': score, 'Duration': duration, 'Board': flattened_board})
+    new_row = pd.Series({'Model': model, 'Score': score, 'Duration': duration, 'Board': flattened_board, **other_data}) # added other data thing
+
+    # if other_data is not None:
+    #     # Add other_data columns to the new row
+    #     for key, value in other_data.items():
+    #         new_row[key] = value
+
     df.loc[len(df)] = new_row
+
+
 
     # Save the DataFrame to the CSV file
     df.to_csv(f"{file_path}", index=False)
@@ -1998,10 +2006,10 @@ class MDP1:
         save_game_result_to_csv("MDP1",
                                 "MDP1",
                                 self.main_game.score,
-                                total_time, self.main_game.board.board,
+                                total_time,
+                                self.main_game.board.board,
                                 other_data={"num_moves": self.main_game.num_moves,
                                             "gamma": self.gamma,
-                                            "scaler_4": self.scaler_4,
                                             "top_proportion": self.best_proportion,
                                             "core_param_0: (1-3)": self.core_params[0],
                                             "core_param_1: (4-6)": self.core_params[1],

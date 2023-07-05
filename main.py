@@ -539,19 +539,13 @@ if __name__ == '__main__':
         start_time = time.time()
         g = Game(use_gui=False)
         g.setup_board()
-        m = MDP1(g, game_obj=Game, verbose=False, best_proportion=1, core_params = np.array([200, 50, 8, 4, 6.25]))  # this just for testing
+        m = MDP1(g, game_obj=Game, verbose=False, best_proportion=1, core_params = np.array([1, 1, 1, 1, 6.25]))  # this just for testing
         m.run()
         print(f"IT TOOK {time.time() - start_time}s to run on {i}")
         i += 1
     # https: // builtin.com / machine - learning / markov - decision - process BELLMAN BELLMAN EXPECTATION EQUATION FOR MARKOV REWARD PROCESS (MRP)
 
 
-    # g.board.window.mainloop()
-
-    # g = Game(use_gui=False)
-    # g.setup_board()
-    # AI = ExplicitTree1(g, Game, 2)
-    # AI.tmp()
 
 
 
