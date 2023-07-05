@@ -181,11 +181,10 @@ class Board:
 
 
 class Game:
-    def __init__(self, track_primes: bool = False, board: Board = None, use_gui: bool = True) -> None:
-        self.track_primes: bool = track_primes
-        self.prime_tracker: int = 1
+    def __init__(self, board: Board = None, use_gui: bool = True, no_display: bool = False) -> None:
         self.score: int = 0
         self.use_gui = use_gui
+        self.no_display = no_display
 
         if board is None:
             self.board: Board = Board()
@@ -214,12 +213,6 @@ class Game:
                 # print(f"GAME dn else for {k}: {v}")
 
         return new_game
-
-    def return_prime(self):
-        if not self.track_primes:
-            return False
-        else:
-            return self.prime_tracker
 
     def setup_board(self) -> None:
         # this fn should be called in __init__
@@ -250,11 +243,12 @@ class Game:
         self.board.add_tile(tile_value, x, y)
 
     def display_updated_board(self):
-        if self.use_gui:
-            self.board.tkinter_print(self.score)
-        else:
-            print(f"--------------------SCORE: {self.score}--------------------")
-            self.board.print(highest=len(str(self.highest_tile)))
+        if not self.no_display:
+            if self.use_gui:
+                self.board.tkinter_print(self.score)
+            else:
+                print(f"--------------------SCORE: {self.score}--------------------")
+                self.board.print(highest=len(str(self.highest_tile)))
 
     def left(self):
         return self.move(1)
@@ -326,15 +320,6 @@ class Game:
             if add_tile:
                 self.add_new_tile()
 
-            # prime stuff. disabled by default because it would slow things down on large simulations
-            if self.track_primes:
-                prime_direction_dict = {
-                    0: 2,  # right
-                    1: 3,  # left
-                    2: 5,  # up
-                    3: 7  # down
-                }
-                self.prime_tracker *= prime_direction_dict[direction]
         if print_board:
             self.display_updated_board()
 
@@ -442,7 +427,7 @@ class Game:
 def run_game(game=None):
     if game is None:
         game = Game()
-        # print(f"on any move, enter 'p' to return prime tracker")
+
         game.setup_board()
     game.display_updated_board()
 
@@ -460,8 +445,7 @@ def run_game(game=None):
         elif move == "d":
             game.right()
 
-        elif move == "p":
-            print(game.return_prime())
+
 
 
 def save_game_result_to_csv(file_name, model, score, duration, board):

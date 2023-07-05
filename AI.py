@@ -1770,11 +1770,12 @@ class MC13:
     """
     uses gamma and stuff
     """
-    def __init__(self, game, game_obj, depth4: dict = None, depth2: dict = None, best_proportion: float = 1, verbose: bool = True) -> None:
+    def __init__(self, game, game_obj, depth4: dict = None, depth2: dict = None, best_proportion: float = 1, verbose: bool = True, gamma: float = 0.9) -> None:
         self.main_game = game
         self.game_obj = game_obj
         self.verbose = verbose
         self.best_proportion = best_proportion
+        self.gamma = gamma  # discount rate of future expected moves
         if depth4 is None:
             self.depth_dict_4 = {
                 15: 3,
@@ -1833,8 +1834,6 @@ class MC13:
             return game.score
 
     def n_games(self):
-
-
         move_dict = {0: "right", 1: "left", 2: "up", 3: "down"}
         projected_scores = []
         immediate_scores = []
@@ -1892,7 +1891,7 @@ class MC13:
             self.almost_lost_fix = self.almost_lost_fix % 4
         else:  # the normal case
             value_of_each_direction = self.discounted_value(immediate_scores, projected_scores)
-            best_direction = np.argmax(projected_scores)
+            best_direction = np.argmax(value_of_each_direction)
 
         if self.verbose:
             print(f"{np.array(projected_scores).round()}\t"
@@ -1907,7 +1906,7 @@ class MC13:
 
 
     def discounted_value(self, immediate_scores: np.ndarray, projected_scores: np.ndarray) -> np.ndarray:
-        pass
+        return immediate_scores + self.gamma * projected_scores
 
 
     def expected_value(self, scores4, scores2, num_empty):
