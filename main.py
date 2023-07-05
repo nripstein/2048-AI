@@ -495,7 +495,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import MC2, MC3, MC4, MC5, RandomMoves, MC6, MC7, MC8, MC9, MC10, MC11, MC12, ExplicitTree1
+    from AI import *
 
 
     # run_game(False)
@@ -537,9 +537,9 @@ if __name__ == '__main__':
     i = 1
     while True:
         start_time = time.time()
-        g = Game(use_gui=True)
+        g = Game(use_gui=False)
         g.setup_board()
-        m = MC12(g, game_obj=Game, verbose=False, best_proportion=1, depth2=None, depth4=None)
+        m = MDP1(g, game_obj=Game, verbose=False, best_proportion=1, core_params = np.array([200, 50, 8, 4, 6.25]))  # this just for testing
         m.run()
         print(f"IT TOOK {time.time() - start_time}s to run on {i}")
         i += 1

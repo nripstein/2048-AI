@@ -7,7 +7,7 @@ import os
 import math
 
 
-def save_game_result_to_csv(file_name, model, score, duration, board, other_data=None):
+def save_game_result_to_csv(file_name, model, score, duration, board, other_data: dict = None):
     """
     Save game results to a CSV file.
 
@@ -1766,60 +1766,11 @@ class MC12:
                                 )
 
 
-class MC13:
+class MDP1:
     """
+    Explicitly markov decision process
     uses gamma and stuff
     """
-    def __init__(self, game, game_obj, depth4: dict = None, depth2: dict = None, best_proportion: float = 1, verbose: bool = True, gamma: float = 0.9) -> None:
-        self.main_game = game
-        self.game_obj = game_obj
-        self.verbose = verbose
-        self.best_proportion = best_proportion
-        self.gamma = gamma  # discount rate of future expected moves
-        if depth4 is None:
-            self.depth_dict_4 = {
-                15: 3,
-                14: 3,
-                13: 3,
-                12: 3,
-                11: 3,
-                10: 3,
-                9: 3,
-                8: 3,
-                7: 3,
-                6: 3,
-                5: 5,
-                4: 7,
-                3: 20,
-                2: 40,
-                1: 80
-            }
-        else:
-            self.depth_dict_4 = depth4
-        if depth2 is None:
-            self.depth_dict_2 = {
-                15: 9,  # 135
-                14: 9,  # 126
-                13: 9,  # 117
-                12: 9,  # 108
-                11: 9,  # 99
-                10: 9,  # 90
-                9: 9,  # 81
-                8: 18,  # 144
-                7: 18,  # 126
-                6: 18,  # 108
-                5: 36,  # 180
-                4: 54,  # 216
-                3: 125,  # 243
-                2: 250,  # 234
-                1: 500  # 225
-            }
-        else:
-            self.depth_dict_2 = depth2
-        self.normal_strength = depth2 is None or depth4 is None
-
-        self.almost_lost_fix = 0
-
     @staticmethod
     def one_game(game):
         """
@@ -1832,6 +1783,85 @@ class MC13:
             game.move(current_direction, print_board=False, illegal_warn=False)
         else:
             return game.score
+
+
+    def __init__(self, game, game_obj, core_params: np.ndarray = None, best_proportion: float = 1, verbose: bool = True, gamma: float = 0.9) -> None:
+        """
+
+        Args:
+            game: Game object the AI should play
+            game_obj (Game): uninitialized Game object
+            core_params (np.ndarray): parameters for depth 2 dict generation according to below specification
+            best_proportion (float):
+            verbose (bool): whether to print intermediate technical results to terminal
+            gamma (float): discount rate
+
+        # depth2 parameter vector needs to have:
+        # 1 (1 - 3) scaled
+        # 4 (4 - 6) scaled              # no higher than 1
+        # 7 (7 - 9) scaled              # no higher than 4
+        # 10 (10 - 15) same for all     # no higher than 7
+        # 4_depth_scale: how much more powerful 2 should be than 4
+        """
+
+        self.main_game = game
+        self.game_obj = game_obj
+        self.verbose = verbose
+        self.best_proportion = best_proportion
+        self.gamma = gamma  # discount rate of future expected moves
+        self.core_params = core_params
+
+
+        if core_params is None:
+            # core_params = {
+            #     1: 500,
+            #     4: 216,
+            #     7: 18,
+            #     10: 9,
+            #     "4_depth_scale": 6.25
+            # }
+            core_params = np.array([500, 216, 18, 9, 6.25])
+
+        # self.depth_dict_2 = {
+        #         15: core_params[10],
+        #         14: core_params[10],
+        #         13: core_params[10],
+        #         12: core_params[10],
+        #         11: core_params[10],
+        #         10: core_params[10],
+        #         9: core_params[7] // (7 / 9),
+        #         8: core_params[7] // (7 / 8),
+        #         7: core_params[7],
+        #         6: core_params[4] // (4 / 6),
+        #         5: core_params[4] // (4 / 5),
+        #         4: core_params[4],
+        #         3: core_params[1] // 3,
+        #         2: core_params[1] // 2,
+        #         1: core_params[1]
+        #     }
+
+        self.depth_dict_2 = {
+            15: int(core_params[3]),
+            14: int(core_params[3]),
+            13: int(core_params[3]),
+            12: int(core_params[3]),
+            11: int(core_params[3]),
+            10: int(core_params[3]),
+            9: int(core_params[2] // (7 / 9)),
+            8: int(core_params[2] // (7 / 8)),
+            7: int(core_params[2]),
+            6: int(core_params[1] // (4 / 6)),
+            5: int(core_params[1] // (4 / 5)),
+            4: int(core_params[1]),
+            3: int(core_params[0] // 3),
+            2: int(core_params[0] // 2),
+            1: int(core_params[0])
+        }
+
+        self.scaler_4 = core_params[4]
+        self.depth_dict_4 = {key: math.ceil(value * 1 / self.scaler_4) for key, value in self.depth_dict_2.items()}
+
+        self.almost_lost_fix = 0
 
     def n_games(self):
         move_dict = {0: "right", 1: "left", 2: "up", 3: "down"}
@@ -1890,7 +1920,7 @@ class MC13:
             self.almost_lost_fix += 1
             self.almost_lost_fix = self.almost_lost_fix % 4
         else:  # the normal case
-            value_of_each_direction = self.discounted_value(immediate_scores, projected_scores)
+            value_of_each_direction = immediate_scores + self.gamma * projected_scores  # apply discounted value MDP1 FUNDAMENTAL STEP
             best_direction = np.argmax(value_of_each_direction)
 
         if self.verbose:
@@ -1903,10 +1933,6 @@ class MC13:
         if self.verbose and self.main_game.use_gui:
             self.main_game.board.print()
         return True  # returns true for continuing
-
-
-    def discounted_value(self, immediate_scores: np.ndarray, projected_scores: np.ndarray) -> np.ndarray:
-        return immediate_scores + self.gamma * projected_scores
 
 
     def expected_value(self, scores4, scores2, num_empty):
@@ -1923,12 +1949,12 @@ class MC13:
         """
         scores2, scores4 = np.array(scores2), np.array(scores4)
 
-        scores2_top = np.partition(scores2, -math.ceil((scores2.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores2.shape[1]) * self.best_proportion):]  # had the math.ceil... has 2 so it would take the top 2. now it takes top half
+        scores2_top = np.partition(scores2, -math.ceil((scores2.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores2.shape[1]) * self.best_proportion):]
 
         if scores4.shape[1] < 2:
             scores4_top = scores4
         else:
-            scores4_top = np.partition(scores4, -math.ceil((scores4.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores4.shape[1]) * self.best_proportion):]  # replace the 2s with whatever length needed
+            scores4_top = np.partition(scores4, -math.ceil((scores4.shape[1]) * self.best_proportion), axis=1)[:, -math.ceil((scores4.shape[1]) * self.best_proportion):]
 
         expected_value = 0
         for node_scores in scores2_top:
@@ -1968,15 +1994,20 @@ class MC13:
                 self.main_game.display_updated_board()
         total_time = time.time() - start_time
         print(f"GAME OVER: SCORE = {self.main_game.score}")
-        if self.normal_strength:
-            strength = "normal"
-        else:
-            strength = "strong"
-        save_game_result_to_csv("MC12",
-                                f"MC12_top_{self.best_proportion*100:.1f}_{strength}%",
+
+        save_game_result_to_csv("MDP1",
+                                "MDP1",
                                 self.main_game.score,
                                 total_time, self.main_game.board.board,
-                                # other_data={"2dict": self.depth_dict_2, "4dict": self.depth_dict_4},
+                                other_data={"num_moves": self.main_game.num_moves,
+                                            "gamma": self.gamma,
+                                            "scaler_4": self.scaler_4,
+                                            "top_proportion": self.best_proportion,
+                                            "core_param_0: (1-3)": self.core_params[0],
+                                            "core_param_1: (4-6)": self.core_params[1],
+                                            "core_param_2: (7-9)": self.core_params[2],
+                                            "core_param_3: (10-15)": self.core_params[3],
+                                            "core_param_4: 2/4 strength ratio": self.core_params[4]}
                                 )
 
 
