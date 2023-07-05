@@ -18,6 +18,8 @@
 % make tables and figures stay in correct section
 \usepackage{float}
 
+\usepackage[table]{xcolor}  % allow coloured cells
+
 \title{2048 AI: Probabilistic Monte Carlo Tree Search}
 \author{Noah Ripstein}
 \date{June 2023}
@@ -29,6 +31,7 @@
 \section{Introduction}
 
 2048 is an addictive game which was originally released in 2014.  The game begins with two randomly placed tiles, each having a value of either 2 or 4, randomly placed on a 4x4 grid. The player can move the tiles in four directions: up, down, left, or right. When a direction is chosen, all tiles on the grid slide as far as possible in that direction, merging with any adjacent tiles of the same value to form a new tile with double the value.  The value of the new tile is added to the score. After the player's turn,  a new tile spawns in a random location; this new tile has a 90\% chance of being a 2, and a 10\% chance of being a 4.   The game ends when the board is filled with tiles and the player has no legal moves.
+TALK HERE ABOUT WHAT I DID BRIEFLY
 
 
 
@@ -101,21 +104,43 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
     \end{algorithmic}
 \end{algorithm}
 
-\subsection{Probabilistic Monte Carlo Tree Search}
-Algorithm 2 aims to address the concerns raised about Algorithm 1 in section 3.1.  Where Algorithm 1 begins Monte Carlo simulations from the board position after a player's move (green nodes in Figure 2), Algorithm 2 begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  
+\subsection{Markov Decision Process}
+The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP). Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a markov decision process because the probability of reaching a future state depends only on the current state, not on previous states: 
+$$P(s|s_{n-1}, s_{n-2},...,s_{0}) = P(s|s_{n-1}) $$
 
-The Probabilistic Monte Carlo Tree Search algorithm maximizes the expected value of a move (Equations 2 and 3). $m$ represents the number of empty tiles, $R_{2i}$ and $R_{4i}$ represent the average of the reported scores assuming a 2 or 4 tile spawn in empty location $i$, respectively.  Equation 2 is derived in the Appendix section.
+In general, an is MDP is characterized as follows:
+\begin{enumerate}
+	\item $S$: The set of states (board position and score) which could arise after the AI's next move.
+	\item $A$: The set of actions which the AI could legally take from the current position.
+	\item $P(s^\prime | s, a)$: Transition probability of reaching state $s^\prime$ given current state $s \in S$ after taking action $a \in A$.
+	\item $V(s)$: The value function which determines the expected future reward associated with entering a state $s \in S$
+	\item $\pi(s)$: The policy function which uses the other functions to strategically pick an action $a \in A$ given any board state.
+	\item $R(s)$: The immediate reward associated with taking action $a \in A$ which leads to state $s \in S$ is a part of many MDP designs.  Justification for why this function was excluded can be found in section 3.3.
+\end{enumerate}
+
+$A$ can be constructed by checking which of left, right, up or down are legal moves. $S$ can be constructed by placing a 2 and then a 4 on each empty tile for each $a \in A$ (Algorithm \ref{CREATE_S}). The value function, $V(s, \vec{\theta})$,  (Algorithm \ref{value_function}) performs a Monte Carlo tree search, with the number of simulations determined by the parameter vector $\vec{\theta}$.  $\vec{\theta}$ contains the following parameters:
+\begin{enumerate}
+	\item Number of random searches for 2 spawning with 1-3 empty tiles.
+	\item Number of random searches for 2 spawning with 4-6 empty tiles.
+	\item Number of random searches for 2 spawning with 7-9 empty tiles.
+	\item Number of random searches for 2 spawning with 10-15 empty tiles.
+	\item How many times more searches 2 spawns should get compared to 4 spawns.
+	\item Top proportion of best performing moves to return.
+\end{enumerate}
+
+$\theta_1, \theta_2, \theta_3$ are scaled so they have the same total number of simulations, and $\theta_4$ uses the same value for each of 10-15.  $\vec{\theta}$ remains constant throughout a single play-through of the game.  As will be discussed in SECTION NUMBER, optimizing $\vec{\theta}$ became a primary direction of inquiry. The policy function which determines what action $a \in A$ to take, $\pi(s)$, is given in Equation The policy function is given in Equation (\ref{MC12_policy_fn}):
 
 \begin{equation}
-  \label{eq:expected_value}
-  E[move] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}R_{2i} + \frac{1}{10}R_{4i}\right)
+\label{MC12_policy_fn}
+\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)V(s', \vec{\theta}) \right)
 \end{equation}
 
-\begin{equation}
-  \textrm{Selected Move} = \argmax_{move} E[move]
-\end{equation}
 
-Compared to the Pure Monte Carlo Tree Search, the probabilistic approach facilitates more sophisticated inference in two ways. 
+Notice that $\pi(s)$ picks the action with the highest expected value, where the value associated with reaching a state is given by a Monte Carlo tree search.
+
+%This is appropriate for $\theta_4$ because beyond early stages of the game, it is uncommon for there to be 10 or more empty tiles, which makes scaling this parameter unnecessarily computationally expensive.
+
+Compared to the Pure Monte Carlo Tree Search, the MDP facilitates more sophisticated inference in two ways. 
 
 \begin{enumerate}
   \item By discarding a portion of explored games with poor results at each node, the impact of the Monte Carlo search playing out extremely poor moves due to chance can be mitigated.  Crucially, simulations with lower scores due to "unlucky" tile spawns in the subsequent turn are not eliminated, ensuring a more comprehensive exploration of potential game outcomes.
@@ -123,38 +148,52 @@ Compared to the Pure Monte Carlo Tree Search, the probabilistic approach facilit
  
 \end{enumerate}
 
-Algorithm 2 implements Equation 2 and Equation 3 in a manner which makes customizable the number of Monte Carlo searches per node (nodeSims) and proportion of top-performing simulated scores to keep (bestProportion).  Both of these parameters impact the reported score associated with a direction, $R_{ni}$, in Equation 2.  nodeSims is a dictionary which maps the number of empty tiles on the board to the number of Monte Carlo simulations to be performed, with different values for 2 spawns and 4 spawns.  The expectedValue function referenced in Algorithm 2 is given by Equation 2.
+The MDP is implemented in a manner which makes customizable the number of Monte Carlo searches per node ($\theta_1 - \theta_5$) and proportion of top-performing simulated scores to keep ($\theta_6$).  Each of these parameters impact the reported score associated with a direction, and therefore the move selected by $\pi(s)$.  
 
 
-% CHATGPT3 CONDENSED
-\begin{algorithm}[H]
-    \caption{Probabilistic Monte Carlo Tree Search} 
+\begin{algorithm}
+    \caption{Generation of $S$}
+    \label{CREATE_S}
     \begin{algorithmic}[1]
-        \Function{MCTS2}{$\text{currentPosition, nodeSims, bestProportion}$}
-            \State $\text{directionScores} \gets \text{list()}$
-            \For{$\text{nextMove} \in \text{legalMoves}(\text{currentPosition})$}
-                \State $\text{node2Scores} \gets \text{list()}$
-                \State $\text{node4Scores} \gets \text{list()}$
-                \For{$\text{childBoard} \in \text{possibleTileSpawns(nextMove)}$}
-                    \State $\text{childBoardScores} \gets \text{list()}$
-                    \For{$\text{gameNumber} \gets 1 \text{ to }\text{nodeSims[childBoard]}$}
-                        \State $\text{result} \gets \text{playRandomChildGame}(\text{currentPosition}, \text{nextMove}, \text{childBoard})$
-                        \State $\text{childBoardScores}.\text{append}(\text{result})$
-                    \EndFor
-                    \If{$\text{childBoard} \text{ has 4 tile}$}
-                        \State $\text{node4Scores}.\text{append}(\text{childBoardScores})$
-                    \Else
-                        \State $\text{node2Scores}.\text{append}(\text{childBoardScores})$
-                    \EndIf
+    		\Function{getStates}{A}
+    		\State $S = \O$
+            \For{$a \in A$}
+                \State $c_s \gets$ score associated with taking action $a$
+                \For{tileNum $\in \{2, 4 \}$}
+                	\For{tile in emptyTiles}
+                		\State place tileNum on tile
+                		\State Add $s \gets$ (board, $c_s$) to $S$
+                		\State remove tileNum from tile
+                	\EndFor
                 \EndFor
-                \State $\text{node2Scores} \gets \text{sort(node2Scores, descending=True)}$
-                \State $\text{node4Scores} \gets \text{sort(node2Scores, descending=True)}$
-                \State $\text{topNode2Scores} \gets \text{node2Scores[0:\textbf{len}(node2Scores)*bestProportion]}$
-                \State $\text{topNode4Scores} \gets \text{node2Scores[0:\textbf{len}(node4Scores)*bestProportion]}$
-                \State $\text{directionScore} \gets \text{expectedValue(topNode2Scores, topNode4Scores)}$
-                \State $\text{directionScores}.\text{append}(\text{topNextMoveScores})$
             \EndFor
-            \State \textbf{return} $\text{directionScores}$
+		\State \textbf{Return }$S$
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{Value Function: $V(s, \vec{\theta})$}
+    \label{value_function}
+    \begin{algorithmic}[1]
+        \Function{Value}{$s, \vec{\theta}$}
+            \State $resultList \gets$ empty list
+            \For{$i \gets 1$ to $\theta_{\text{num\_sims}}$}\Comment{$\theta_{\text{num\_sims}}$ depends on empty tiles}
+                \State $result \gets$ \Call{RandomGame}{$s$} \Comment{Call the RandomGame function}
+                \State add $result$ to $resultList$ \Comment{Record the result}
+            \EndFor
+            \State sort $resultList$ in ascending order
+            \State $proportion \gets \theta_{\text{proportion}} \times \text{length}(resultList)$
+            \State $topResults \gets resultList[1:\text{round}(proportion)]$ \Comment{Select the top results}
+            \State \textbf{return} $topResults$
+        \EndFunction
+        \Statex
+        \Function{RandomGame}{$s$}
+            \While{game not over}
+                \State Pick random $a \in A$
+                \State Make move $a$
+            \EndWhile
+            \State \textbf{return} game score
         \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -172,38 +211,70 @@ Have chart of \% reached 2048, 4096, etc, and avg score for each model. probs ne
 can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.\\
 
 
-
-\begin{table}[H]
+\begin{table}[h]
   \caption{Results of Different Models}
   \begin{tabular}{|l|c|c|c|c|c|}
     \hline
-    & 2048 [\%] & 4096 [\%] & 8192 [\%] & 16384 [\%] & Avg. Score \\
+    & 2048 & 4096 & 8192 & Avg. Score \\
     \hline
-    Pure MCTS & & & & & \\
+    Pure MCTS & & & & \\
     \hline
-    Proba. MCTS (top 100\%) & & & & & \\
+    MDP (top 100\%) & \cellcolor{green!25}97\% & \cellcolor{green!25}58\% & 0\% & 53,232\\
     \hline
-    Proba. MCTS (top 75\%) & & & & & \\
+    MDP (top 75\%) & 94\% & \cellcolor{green!25}58\% & 1\% & 53,565\\
     \hline
-    Proba. MCTS (top 50\%) & & & & & \\
+    MDP (top 50\%) & 94\% & 57\% & 2\% & 53,282\\
     \hline
-    Proba. MCTS (top 25\%) & & & & & \\
+    MDP (top 25\%) & 93\% & \cellcolor{green!25}58\% & \cellcolor{green!25}5\% & \cellcolor{green!25}55,966 \\
     \hline
   \end{tabular}
 \end{table}
 
 \section{Future Directions (not done)}
+
+MAIN IDEAS FOR FUTURE DIRECTIONS:\\
+- optimize $\vec{\theta}$ using surrogate modelling:
+\begin{enumerate}
+	\item Evaluate model with a series of parameters created by latin hypercube sampling
+	\item Design cost function which should be minimized to have "optimal performance". Will need to trade off speed and performance. probably ideally will have on average 2 seconds per move and reward higher scores.
+	\item EITHER Train some sort of machine learning model to approximate the underlying function, and then minimize that function's cost
+	\item OR use Bayesian optimization so I can get a better sense of uncertainty.
+\end{enumerate}
+
+
+
 Use heuristics\\
 Note that part of the challenge here was not to use heuristics
 https://arxiv.org/abs/2110.10374
 These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
 
-dynamically switch to minimax or expectimax when there are few open tiles.
+dynamically switch to minimax or expectimax when there are few open tiles.\\
 
-\appendix
-\section*{Appendix: E[$move$] Derivation (not done)}
-In general, the expected value of a task $X$ is given by $E[$X$] = \sum_{i=1}^n$
-$$ E $$
+
+
+
+\section{FORMALIZING AS MDP (notes to self)}
+The components of a Markov Decision process are:
+%https://leonardoaraujosantos.gitbook.io/artificial-inteligence/artificial_intelligence/markov_decision_process
+
+\begin{enumerate}
+	\item States: A set of possible states (board positions)
+	\item Tansition model: $P(s'|s, a)$ The probability of reaching state $s'$ given that we perform action $a$ while in state $s$.
+	\item Action: $A(s)$ set of possible actions in a state (what's legal of up, down, left right)
+	
+	\item Value function: $V(s)$ normally recursively defined with bellman equations,  gives the value associated with a given state.
+	\item Policy: function takes in a state, returns an action $a$. can be given by 
+	
+	
+	$\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)(R(s,a) + \gamma V(s')) \right)$ \\
+	MC12 uses:
+	$\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)V(s') \right)$\\
+	$R(s, a)$ is the immediate score we get if we perform action $a$ while in state $s$.
+	$\gamma$ is discount rate for future rewards (follows principle that certain reward now better than uncertain reward later)
+	$V(s')$ is the value of reaching state $s'$. Done with monte carlo tree search.
+\end{enumerate}
+
+
 
 
 \end{document}
