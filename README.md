@@ -1,4 +1,4 @@
-# This project is a work in progress... [Read the early stage report draft](https://github.com/nripstein/2048/blob/main/2048%20writeup.pdf0)
+# This project is a work in progress... [Read the early stage report draft](https://github.com/nripstein/2048/blob/main/2048%20writeup.pdf)
 
 ## Example
 Terminal implimentation <br>
