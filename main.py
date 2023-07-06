@@ -243,7 +243,7 @@ class Game:
         self.board.add_tile(tile_value, x, y)
 
     def display_updated_board(self):
-        if not self.no_display:
+        if not self.no_display or self.num_moves % 30 == 0:
             if self.use_gui:
                 self.board.tkinter_print(self.score)
             else:
