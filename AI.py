@@ -2029,7 +2029,7 @@ class MDP2:
     """
     Same as MC12 but has parameters set up better for optimization
     """
-    def __init__(self, game, game_obj, core_params: np.ndarray = None, best_proportion: float = 1, verbose: bool = True) -> None:
+    def __init__(self, game, game_obj, core_params: np.ndarray = None, best_proportion = 1, verbose = False):
         """
 
         Args:
@@ -2038,7 +2038,6 @@ class MDP2:
             core_params (np.ndarray): parameters for depth 2 dict generation according to below specification
             best_proportion (float):
             verbose (bool): whether to print intermediate technical results to terminal
-            gamma (float): discount rate
 
         core_params accepts floats. will convert all (except last one) to ints as required
 
@@ -2218,7 +2217,10 @@ class MDP2:
                     boards4.append(new_board)
         return boards2, boards4
 
-    def run(self):
+    def run(self) -> tuple[int, float]:
+        """
+        Returns: (score, time per move)
+        """
         start_time = time.time()
         while not self.main_game.game_over_check():
             self.n_games()
@@ -2241,6 +2243,7 @@ class MDP2:
                                             "core_param_3: (10-15)": self.core_params[3],
                                             "core_param_4: 2/4 strength ratio": self.core_params[4]}
                                 )
+        return self.main_game.score, round(total_time/self.main_game.num_moves, 2)
 
 class ExplicitTree1:
     def __init__(self, game, game_obj, depth):
