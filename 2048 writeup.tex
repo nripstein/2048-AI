@@ -20,7 +20,10 @@
 
 \usepackage[table]{xcolor}  % allow coloured cells
 
-\title{2048 AI: Probabilistic Monte Carlo Tree Search}
+
+\usepackage[section]{placeins} % keep figures in same section 
+
+\title{2048 AI: Monte Carlo-Powered Markov Decision Process}
 \author{Noah Ripstein}
 \date{June 2023}
 
@@ -31,7 +34,8 @@
 \section{Introduction}
 
 2048 is an addictive game which was originally released in 2014.  The game begins with two randomly placed tiles, each having a value of either 2 or 4, randomly placed on a 4x4 grid. The player can move the tiles in four directions: up, down, left, or right. When a direction is chosen, all tiles on the grid slide as far as possible in that direction, merging with any adjacent tiles of the same value to form a new tile with double the value.  The value of the new tile is added to the score. After the player's turn,  a new tile spawns in a random location; this new tile has a 90\% chance of being a 2, and a 10\% chance of being a 4.   The game ends when the board is filled with tiles and the player has no legal moves.
-TALK HERE ABOUT WHAT I DID BRIEFLY
+
+A Pure Monte Carlo Tree Search was first implemented, and then improved upon by formalizing part of the game's decision tree as a Markov Decision Process.  The Markov Decision Processs achieves the 2048 tile 97\% of the time and the 4096 tile 58\% of the time. 
 
 
 
@@ -57,7 +61,7 @@ TALK HERE ABOUT WHAT I DID BRIEFLY
 
 \section{The Decision Tree}
 
-One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves which do not combine any tiles).  In general, there are $2(l)(m)$ possible states after the player's move, where $l$ is the number of legal moves, and $m$ is the number of empty spaces on the board after tiles have been combined from the player's turn.
+One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves which do not combine any tiles).  In general, there are $2(|S|)(m) + c$ possible states after the player's move, where $|S|$ is the number of legal moves,  $m$ is the number of empty spaces on the board after tiles have been combined from the player's turn, and $c$ is the number of tiles which get merged as a result of the player's move.
 
 %\includegraphics[scale=0.2]{tree_1.jpeg}\\
 \begin{figure}[H]
@@ -69,10 +73,11 @@ One of the challenges of creating an AI which plays 2048 is the sheer number of 
 
 \section{Monte Carlo Tree Exploration: AI Designs}
 \subsection{Pure Monte Carlo Tree Search}
-The initial algorithm I employed is a Pure Monte Carlo Tree Search (Algorithm 1). This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
+The initial algorithm employed is a Pure Monte Carlo Tree Search (Algorithm 1 This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
 
 \begin{equation}
-  \textrm{Selected Move} = \argmax_{move} \text{MCTS1}(move)
+\label{PMCTS_move_selection}
+  \textrm{Selected Move} = \argmax_{move} \text{PMCTS}(move)
 \end{equation}
 
 
@@ -85,9 +90,10 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 
 % could also use delta performance. that way poor moves would be punished more I think 
 \begin{algorithm}
+\label{PMCTS_algo}
     \caption{Pure Monte Carlo Tree Search}
     \begin{algorithmic}[1]
-        \Function{MCTS1}{$\text{currentPosition, n}$}
+        \Function{PMCTS}{$\text{currentPosition, n}$}
             \State $\text{directionScores} \gets \text{list()}$
             \For{$\text{nextMove} \in \text{legalMoves}(\text{currentPosition})$}
                 \State $\text{nextMoveScores} \gets \text{list()}$
@@ -105,7 +111,7 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 \end{algorithm}
 
 \subsection{Markov Decision Process}
-The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP). Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a markov decision process because the probability of reaching a future state depends only on the current state, not on previous states: 
+The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a markov decision process because the probability of reaching a future state depends only on the current state, not on previous states: 
 $$P(s|s_{n-1}, s_{n-2},...,s_{0}) = P(s|s_{n-1}) $$
 
 In general, an is MDP is characterized as follows:
@@ -198,17 +204,18 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
     \end{algorithmic}
 \end{algorithm}
 
-%\section{Next Move Selection}
-%The aim is to maximize the expected score.  Expected value calculations are helpful for this.  Let $move_j$ be the $j$th legal move in the current game state, $\overline{S_{n_i}}$ be the average score obtained in the $i$th node of the Monte Carlo search with tile value $n$ as parent, and $m$ be the number of empty tiles (given by the cardinality of $\overline{S_{n_i}}$). % THIS NEEDS REWORDING\\
-%TALK ABOUT HOW THE AVERAGE THING ISNT A GREAT ESTIMATE OF PAYOUT. THEN CAN ALSO MENTION HOW THAT WOULD BE GOOD FOR FUTURE DIRECTIONS
-%$$E[move_j] = \sum_{i=1}^m \left(\frac{9}{10}\frac{1}{m}\overline{S_{2_i}} + \frac{1}{10}\frac{1}{m}\overline{S_{4_i}}\right)$$
-%$$E[move_j] = \frac{1}{m}\sum_{i=1}^m \left(\frac{9}{10}\overline{S_{2_i}} + \frac{1}{10}\overline{S_{4_i}}\right)$$
-%$$\textrm{Selected Move} = \argmax_{move} E[move]$$
+\subsection{The Problem with Bellman's Equation}
+A common approach in MDP applications is to use Bellman's Equation to evaluate the utility of taking action $a$.  Rather than the utility of entering state $s^\prime$ being given by $V(s^\prime)$, Bellman's equation would hold that the utility would be given by $R(s, a) + \gamma V(s^\prime)$.  Here, $R(s, a)$ is the immediate guaranteed value associated with taking action $a$ when in state $s$, and $\gamma \in [0, 1]$ is a discount rate for expected future rewards.  In principle, and in many other applications of MDP, this approach outperforms simply using $V(s^\prime)$, because it adheres to the principle that immediate, certain rewards are less favourable than uncertain future rewards.  Equation \ref{Bellman_policy} shows how Bellman's Equation could be incorporated into the policy function, $\pi (s)$.
 
-\section{Results}
-Have chart of \% reached 2048, 4096, etc, and avg score for each model. probs need each of them at 100 runs.
+Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9), and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes current rewards too much over future rewards (even with high values of $\gamma$).
+\begin{equation}
+\label{Bellman_policy}
+\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)(R(s,a) + \gamma V(s', \vec{\theta})) \right)
+\end{equation}
 
-can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.\\
+
+\section{Results (figures to be added soon)}
+%can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.\\
 
 
 \begin{table}[h]
@@ -230,49 +237,35 @@ can have some sort of Bayesian BDF bc can model the proportion of time it reache
   \end{tabular}
 \end{table}
 
-\section{Future Directions (not done)}
-
-MAIN IDEAS FOR FUTURE DIRECTIONS:\\
-- optimize $\vec{\theta}$ using surrogate modelling:
+\section{Future Directions}
+This is an ongoing project, and the next thing I hope to implement is the optimization of $\vec{\theta}$, the parameter vector which controls how many random Monte Carlo searches to perform for a given number of empty tiles.  The goal is to find the optimal tradeoff of time vs score.  Below is a rough outline of the plan:
 \begin{enumerate}
-	\item Evaluate model with a series of parameters created by latin hypercube sampling
-	\item Design cost function which should be minimized to have "optimal performance". Will need to trade off speed and performance. probably ideally will have on average 2 seconds per move and reward higher scores.
-	\item EITHER Train some sort of machine learning model to approximate the underlying function, and then minimize that function's cost
-	\item OR use Bayesian optimization so I can get a better sense of uncertainty.
+	\item Use Latin Hypercube Sampling to draw a series of samples within the parameter space
+	\item Repeatedly use Bayesian Optimization to determine which sets of parameters to evaluate next. (Implementation details such as Acquisition function not yet sorted out)
 \end{enumerate}
 
+Before doing this, I will decide what I want to optimize for.  Ideally, I would optimize for both move speed and score, and find the pareto efficient solution set which lets me choose the optimal speed and average score of the final model. 
+
+%The primary area for improvement is parameter optimization.  In particular, the $\vec{\theta}$ parameter described in section 3.2 could be optimized to find... NOT DONE
+%MAIN IDEAS FOR FUTURE DIRECTIONS:\\
+%- optimize $\vec{\theta}$ using surrogate modelling:
+%\begin{enumerate}
+%	\item Evaluate model with a series of parameters created by latin hypercube sampling
+%	\item Design cost function which should be minimized to have "optimal performance". Will need to trade off speed and performance. probably ideally will have on average 2 seconds per move and reward higher scores.
+%	\item EITHER Train some sort of machine learning model to approximate the underlying function, and then minimize that function's cost
+%	\item OR use Bayesian optimization so I can get a better sense of uncertainty.
+%	\item ideally make it multi-objective so I can find the pareto optimal frontier and decide on my own optimal tradeoff of speed vs strength.
+%\end{enumerate}
 
 
-Use heuristics\\
-Note that part of the challenge here was not to use heuristics
-https://arxiv.org/abs/2110.10374
-These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
 
-dynamically switch to minimax or expectimax when there are few open tiles.\\
+%Use heuristics\\
+%Note that part of the challenge here was not to use heuristics
+%https://arxiv.org/abs/2110.10374
+%These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
 
+%dynamically switch to minimax or expectimax when there are few open tiles.\\
 
-
-
-\section{FORMALIZING AS MDP (notes to self)}
-The components of a Markov Decision process are:
-%https://leonardoaraujosantos.gitbook.io/artificial-inteligence/artificial_intelligence/markov_decision_process
-
-\begin{enumerate}
-	\item States: A set of possible states (board positions)
-	\item Tansition model: $P(s'|s, a)$ The probability of reaching state $s'$ given that we perform action $a$ while in state $s$.
-	\item Action: $A(s)$ set of possible actions in a state (what's legal of up, down, left right)
-	
-	\item Value function: $V(s)$ normally recursively defined with bellman equations,  gives the value associated with a given state.
-	\item Policy: function takes in a state, returns an action $a$. can be given by 
-	
-	
-	$\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)(R(s,a) + \gamma V(s')) \right)$ \\
-	MC12 uses:
-	$\pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)V(s') \right)$\\
-	$R(s, a)$ is the immediate score we get if we perform action $a$ while in state $s$.
-	$\gamma$ is discount rate for future rewards (follows principle that certain reward now better than uncertain reward later)
-	$V(s')$ is the value of reaching state $s'$. Done with monte carlo tree search.
-\end{enumerate}
 
 
 
