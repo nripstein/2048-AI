@@ -33,7 +33,7 @@
 
 \section{Introduction}
 
-2048 is an addictive game which was originally released in 2014.  The game begins with two randomly placed tiles, each having a value of either 2 or 4, randomly placed on a 4x4 grid. The player can move the tiles in four directions: up, down, left, or right. When a direction is chosen, all tiles on the grid slide as far as possible in that direction, merging with any adjacent tiles of the same value to form a new tile with double the value.  The value of the new tile is added to the score. After the player's turn,  a new tile spawns in a random location; this new tile has a 90\% chance of being a 2, and a 10\% chance of being a 4.   The game ends when the board is filled with tiles and the player has no legal moves.
+2048 is an addictive game which was originally released in 2014.  The game begins with two randomly placed tiles, each having a value of either 2 or 4, randomly placed on a 4x4 grid. The player can move the tiles in four directions: up, down, left, or right. When a direction is chosen, all tiles on the grid slide as far as possible in that direction, merging with any adjacent tiles of the same value to form a new tile with double the value.  The value of the new tile is added to the score. After the player's turn,  a new tile spawns in a random location; this new tile has a 90\% chance of being a 2, and a 10\% chance of being a 4.   The game ends when the board is filled with tiles and the player has no legal moves.  The goal of the game is to combine tiles until the 2048 tile is reached (although it is possible to continue playing after winning).
 
 A Pure Monte Carlo Tree Search was first implemented, and then improved upon by formalizing part of the game's decision tree as a Markov Decision Process.  The Markov Decision Processs achieves the 2048 tile 97\% of the time and the 4096 tile 58\% of the time. 
 
@@ -207,7 +207,7 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
 \subsection{The Problem with Bellman's Equation}
 A common approach in MDP applications is to use Bellman's Equation to evaluate the utility of taking action $a$.  Rather than the utility of entering state $s^\prime$ being given by $V(s^\prime)$, Bellman's equation would hold that the utility would be given by $R(s, a) + \gamma V(s^\prime)$.  Here, $R(s, a)$ is the immediate guaranteed value associated with taking action $a$ when in state $s$, and $\gamma \in [0, 1]$ is a discount rate for expected future rewards.  In principle, and in many other applications of MDP, this approach outperforms simply using $V(s^\prime)$, because it adheres to the principle that immediate, certain rewards are less favourable than uncertain future rewards.  Equation \ref{Bellman_policy} shows how Bellman's Equation could be incorporated into the policy function, $\pi (s)$.
 
-Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9), and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes current rewards too much over future rewards (even with high values of $\gamma$).
+Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9), and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes immediate rewards too much over future rewards (even with high values of $\gamma$).
 \begin{equation}
 \label{Bellman_policy}
 \pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)(R(s,a) + \gamma V(s', \vec{\theta})) \right)
@@ -224,7 +224,7 @@ Despite the theoretical backing, using Equation \ref{Bellman_policy} as the poli
     \hline
     & 2048 & 4096 & 8192 & Avg. Score \\
     \hline
-    Pure MCTS & & & & \\
+    Pure MCTS & 77\% & 10\% & 0\% & 31,011 \\
     \hline
     MDP (top 100\%) & \cellcolor{green!25}97\% & \cellcolor{green!25}58\% & 0\% & 53,232\\
     \hline
@@ -238,13 +238,29 @@ Despite the theoretical backing, using Equation \ref{Bellman_policy} as the poli
 \end{table}
 
 \section{Future Directions}
+
+\subsection{Parameter Optimization}
+
 This is an ongoing project, and the next thing I hope to implement is the optimization of $\vec{\theta}$, the parameter vector which controls how many random Monte Carlo searches to perform for a given number of empty tiles.  The goal is to find the optimal tradeoff of time vs score.  Below is a rough outline of the plan:
 \begin{enumerate}
-	\item Use Latin Hypercube Sampling to draw a series of samples within the parameter space
+	\item Use a Quasi-Monte Carlo sampling technique with low discrepancy (such as Latin Hypercube Sampling or Sobol sampling) to draw a series of samples within the parameter space.
 	\item Repeatedly use Bayesian Optimization to determine which sets of parameters to evaluate next. (Implementation details such as Acquisition function not yet sorted out)
 \end{enumerate}
 
-Before doing this, I will decide what I want to optimize for.  Ideally, I would optimize for both move speed and score, and find the pareto efficient solution set which lets me choose the optimal speed and average score of the final model. 
+I intend to optimize for both move speed and score, and find the pareto efficient solution set which lets me choose the optimal speed and average score of the final model.   Bayesian optimization is likely a strong framework for parameter optimization because it calls the target function (which can be non-differentiable) fewer times than other methods like evolutionary algorithms.
+\textbf{Contingency plan for parameter optimization:}\\
+
+If Bayesian optimization does not produce satisfactory results, I will use parameter performance data it generates to train a neural network, which will serve as a surrogate model (by Universal approximation theorem).  The surrogate model will serve as a cheap-to-run approximation of the performance metrics obtained by a set of parameters.  I can find the minimum of the surrogate model using an evolutionary algorithm, and then evaluate those parameters on the true model.  Obtaining new data this way and retraining the model would ideally converge to a global minimum after repeating the process.
+
+\subsection{Dynamic Policy Switching}
+It is possible that when there are few tiles on the board, and explicit exploration of greater depth would be beneficial.  Dynamically switching to an Expectimax algorithm seems like it may have strong results here.  Expectimax uses Equation \ref{Bellman_policy} with a recursive value function given by Equation  \ref{expectimax_value_fn}.
+
+\begin{equation}
+\label{expectimax_value_fn}
+V(s, \vec{\theta}) = \sum_{s^\prime \in S} P(s, s^\prime)(R(s, s^\prime) + \gamma V(s^\prime, \vec{\theta}))
+\end{equation}
+
+Equation \ref{expectimax_value_fn} would evaluate to a certain recursive depth, and then call Algorithm \ref{value_function} as the final evaulation of $V(s, \vec{\theta})$ to estimate the value at the final search state.  This strategy would be particularly useful when there are few open tiles on the board because the low number of states to search increases the maximum search depth in a given amount of time.
 
 %The primary area for improvement is parameter optimization.  In particular, the $\vec{\theta}$ parameter described in section 3.2 could be optimized to find... NOT DONE
 %MAIN IDEAS FOR FUTURE DIRECTIONS:\\
