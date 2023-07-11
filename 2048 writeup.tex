@@ -73,7 +73,7 @@ One of the challenges of creating an AI which plays 2048 is the sheer number of 
 
 \section{Monte Carlo Tree Exploration: AI Designs}
 \subsection{Pure Monte Carlo Tree Search}
-The initial algorithm employed is a Pure Monte Carlo Tree Search (Algorithm 1 This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
+The initial algorithm employed is a Pure Monte Carlo Tree Search (Algorithm 1). This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
 
 \begin{equation}
 \label{PMCTS_move_selection}
@@ -111,7 +111,7 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 \end{algorithm}
 
 \subsection{Markov Decision Process}
-The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a markov decision process because the probability of reaching a future state depends only on the current state, not on previous states: 
+The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a Markov decision process because the game satifies the Markov property: the probability of reaching a future state depends only on the current state, not on previous states: 
 $$P(s|s_{n-1}, s_{n-2},...,s_{0}) = P(s|s_{n-1}) $$
 
 In general, an is MDP is characterized as follows:
@@ -134,7 +134,7 @@ $A$ can be constructed by checking which of left, right, up or down are legal mo
 	\item Top proportion of best performing moves to return.
 \end{enumerate}
 
-$\theta_1, \theta_2, \theta_3$ are scaled so they have the same total number of simulations, and $\theta_4$ uses the same value for each of 10-15.  $\vec{\theta}$ remains constant throughout a single play-through of the game.  As will be discussed in SECTION NUMBER, optimizing $\vec{\theta}$ became a primary direction of inquiry. The policy function which determines what action $a \in A$ to take, $\pi(s)$, is given in Equation The policy function is given in Equation (\ref{MC12_policy_fn}):
+$\theta_1, \theta_2, \theta_3$ are scaled so they have the same total number of simulations, and $\theta_4$ uses the same number of simulations for each of 10-15 empty tiles.  $\vec{\theta}$ remains constant throughout a single play-through of the game.  As will be discussed in Section 5.1 optimizing $\vec{\theta}$ became a primary direction of inquiry. The policy function, which determines what action $a \in A$ to take, $\pi(s)$, is given by Equation \ref{MC12_policy_fn}:
 
 \begin{equation}
 \label{MC12_policy_fn}
@@ -207,7 +207,7 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
 \subsection{The Problem with Bellman's Equation}
 A common approach in MDP applications is to use Bellman's Equation to evaluate the utility of taking action $a$.  Rather than the utility of entering state $s^\prime$ being given by $V(s^\prime)$, Bellman's equation would hold that the utility would be given by $R(s, a) + \gamma V(s^\prime)$.  Here, $R(s, a)$ is the immediate guaranteed value associated with taking action $a$ when in state $s$, and $\gamma \in [0, 1]$ is a discount rate for expected future rewards.  In principle, and in many other applications of MDP, this approach outperforms simply using $V(s^\prime)$, because it adheres to the principle that immediate, certain rewards are less favourable than uncertain future rewards.  Equation \ref{Bellman_policy} shows how Bellman's Equation could be incorporated into the policy function, $\pi (s)$.
 
-Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9), and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes immediate rewards too much over future rewards (even with high values of $\gamma$).
+Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9) and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes immediate rewards too much over future rewards (even with high values of $\gamma$).
 \begin{equation}
 \label{Bellman_policy}
 \pi(s) = \argmax\limits_{a}\left( \sum\limits_{s' \in S} P(s'|s, a)(R(s,a) + \gamma V(s', \vec{\theta})) \right)
