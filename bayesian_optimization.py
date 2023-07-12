@@ -3,7 +3,7 @@ from ax.service.ax_client import AxClient
 from ax.service.utils.instantiation import ObjectiveProperties
 import statistics
 from tqdm import tqdm
-from main import Game
+from game_logic import Game
 from AI import MDP2
 
 ax_client = AxClient(random_seed=42)

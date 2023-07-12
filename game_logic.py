@@ -495,7 +495,7 @@ def save_game_result_to_csv(file_name, model, score, duration, board):
 
 
 if __name__ == '__main__':
-    from AI import *
+    from all_AI_iterations import *
 
 
     # run_game(False)
