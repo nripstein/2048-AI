@@ -20,8 +20,13 @@
 *.pyo    binary export-ignore
 *.pyd    binary
 
+
+
+
 # Jupyter notebook
 *.ipynb  text eol=lf
+# Make Jupyter notebook not dominate percentage:
+*.ipynb -linguist-detectable
 
 # Note: .db, .p, and .pkl files are associated
 # with the python modules ``pickle``, ``dbm.*``,
