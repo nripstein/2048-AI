@@ -25,11 +25,16 @@
 
 \title{2048 AI: Monte Carlo-Powered Markov Decision Process}
 \author{Noah Ripstein}
-\date{June 2023}
+\date{June 12, 2023}
 
 \begin{document}
 
 \maketitle
+
+
+\begin{abstract}
+A 2048 Python clone was developed and was used to test a series of AI strategies.  A strategy which formalizes the game as a Markov Decision Process powered by Monte Carlo simulations significantly outperformed a Pure Monte Carlo Tree Search algorithm.  Model search parameters were then optimized to find the pareto efficient solution set which maximises performance and minimizes runtime.
+\end{abstract}
 
 \section{Introduction}
 
@@ -71,7 +76,7 @@ One of the challenges of creating an AI which plays 2048 is the sheer number of 
 \label{fig:tree1}
 \end{figure}
 
-\section{Monte Carlo Tree Exploration: AI Designs}
+\section{AI Designs}
 \subsection{Pure Monte Carlo Tree Search}
 The initial algorithm employed is a Pure Monte Carlo Tree Search (Algorithm 1). This algorithm takes the current game position and the desired number of simulations per direction ($n$) as inputs. It explores all legal next moves from the current position by simulating $n$ games for each potential move. The scores from the end of these simulated games are then averaged to determine the desirability of each move. The direction with the highest average score is selected: 
 
@@ -86,7 +91,7 @@ This approach initiates from the green nodes in the game tree diagram (Fig. 2). 
 % There are a few problems I identified with this approach.  Notice that it begins the search from a green node (Fig. 1), and reaches the yellow and red child nodes through random exploration. \\
 While this approach provides a comprehensive exploration of the game tree, it has significant limitations. The primary concern lies in the random nature of the search process. As a consequence, some of the simulated games performed during the Monte Carlo simulations may yield exceptionally poor results that are highly unlikely to occur in actual gameplay.  This lead me to want to discard a portion of those simulated games with particularly poor scores from consideration.
 
-Simply modifying Algorithm 1 to calculate the average score for a given move using only top-performing of simulated games would not adequately address this source of randomness, however.  There are two sources of randomness inherent in the Pure Monte Carlo Tree Search: randomness associated with game-play (which we aim to reduce), and randomness of tile spawns.  Discarding randomly played games with low scores in an attempt to address the former source of randomness might prevent the AI from evaluating branches of the tree which involve unlucky tiles spawning after the next turn.
+Simply modifying Algorithm 1 to calculate the average score for a given move using only top-performing of simulated games would not adequately address this source of randomness, however.  There are two sources of randomness inherent in the Pure Monte Carlo Tree Search: randomness associated with game-play (which I aim to reduce), and randomness of tile spawns.  Discarding randomly played games with low scores in an attempt to address the former source of randomness might prevent the AI from evaluating branches of the tree which involve unlucky tiles spawning after the next turn.
 
 % could also use delta performance. that way poor moves would be punished more I think 
 \begin{algorithm}
@@ -248,7 +253,14 @@ This is an ongoing project, and the next thing I hope to implement is the optimi
 \end{enumerate}
 
 I intend to optimize for both move speed and score, and find the pareto efficient solution set which lets me choose the optimal speed and average score of the final model.   Bayesian optimization is likely a strong framework for parameter optimization because it calls the target function (which can be non-differentiable) fewer times than other methods like evolutionary algorithms.
-\textbf{Contingency plan for parameter optimization:}\\
+
+% this para below can go in discussion once I do more param optimization
+Model score is most strongly influenced by the proportion of time the 4096 tile is reached.  Many trials (with a wide range of parameters) which do not reach the 4096 tile achieve a score around 36,000, when they are near the 4096 tile.  AI strategies are likely to fail shortly before reaching the next milestone tile because this is when there are the most large tiles on the board which can not yet be joined.  Once reaching the 4096 tile, it is uncommon for a score below 60,000 to be reached, although there is a meaningful distribution between 60,000 and 80,000, where 80,000 represents the point near achieving a 8192 tile.   This requires that a given set of parameters is evaluated multiple times on the model before reporting performance.  In order to illustrate this, consider the following example:
+
+Suppose that a set of parameters $\vec{\theta_1}$ is stronger than the pre-optimized parameters, and has a true probability of reaching the 4096 tile 60\% of the time, with the model scoring 35,000 when it doesn't reach 4096, and 70,000 when it does.  This means that a score of $56,000 = 0.6(70,000) + 0.4(35,000)$ should be reported as the long term expected performance of $\vec{\theta_1}$.  If $\vec{\theta_1}$ is tested 3 times, the probability of 0.375 that the which would report a score of 47,333 by reaching 4096 only once.   With 9 repeats, the probability of 47,333 or a worse score being reported (reaching 4096 3 times or fewer of 9) is 0.099.  Running the parameters 9 times drastically reduces the noisiness of the data, which enables the Bayesian optimization model to make more accurate predictions about how future sets of parameters will perform.
+\\
+
+\noindent{\textbf{Contingency plan for parameter optimization:}\\}
 
 If Bayesian optimization does not produce satisfactory results, I will use parameter performance data it generates to train a neural network, which will serve as a surrogate model (by Universal approximation theorem).  The surrogate model will serve as a cheap-to-run approximation of the performance metrics obtained by a set of parameters.  I can find the minimum of the surrogate model using an evolutionary algorithm, and then evaluate those parameters on the true model.  Obtaining new data this way and retraining the model would ideally converge to a global minimum after repeating the process.
 
@@ -257,7 +269,7 @@ It is possible that when there are few tiles on the board, and explicit explorat
 
 \begin{equation}
 \label{expectimax_value_fn}
-V(s, \vec{\theta}) = \sum_{s^\prime \in S} P(s, s^\prime)(R(s, s^\prime) + \gamma V(s^\prime, \vec{\theta}))
+V(s, \vec{\theta}) = \sum_{s^\prime \in S} P(s^\prime|s, a)(R(s, s^\prime) + \gamma V(s^\prime, \vec{\theta}))
 \end{equation}
 
 Equation \ref{expectimax_value_fn} would evaluate to a certain recursive depth, and then call Algorithm \ref{value_function} as the final evaulation of $V(s, \vec{\theta})$ to estimate the value at the final search state.  This strategy would be particularly useful when there are few open tiles on the board because the low number of states to search increases the maximum search depth in a given amount of time.
