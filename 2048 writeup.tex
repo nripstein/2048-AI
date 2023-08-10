@@ -9,8 +9,8 @@
 \usepackage{algorithm} 
 \usepackage{algpseudocode} 
 
-% Needed for subcaption for side-by-side figures
-\usepackage{subcaption}
+\usepackage{subcaption} % Needed for subcaption for side-by-side figures
+\usepackage{amssymb} % needed for \varnothing which is empty set
 
 % package to indent first paragraph after section header
 \usepackage{indentfirst}
@@ -19,13 +19,13 @@
 \usepackage{float}
 
 \usepackage[table]{xcolor}  % allow coloured cells
-
-
+\usepackage{tikz} % for designing figures
+\usepackage{xcolor} % colouring the figure
 \usepackage[section]{placeins} % keep figures in same section 
 
 \title{2048 AI: Monte Carlo-Powered Markov Decision Process}
 \author{Noah Ripstein}
-\date{June 12, 2023}
+\date{August 10, 2023}
 
 \begin{document}
 
@@ -86,9 +86,9 @@ The initial algorithm employed is a Pure Monte Carlo Tree Search (Algorithm 1). 
 \end{equation}
 
 
-This approach initiates from the green nodes in the game tree diagram (Fig. 2). From there, the algorithm proceeds through random exploration to reach the yellow and red child nodes, representing the spawning of a 2 or 4 tile in each possible location.
+This approach initiates from the green nodes in the game tree diagram (Fig. 2). From there, the algorithm proceeds through random exploration to reach the red child nodes, representing the spawning of a 2 or 4 tile in each possible location.
 
-% There are a few problems I identified with this approach.  Notice that it begins the search from a green node (Fig. 1), and reaches the yellow and red child nodes through random exploration. \\
+
 While this approach provides a comprehensive exploration of the game tree, it has significant limitations. The primary concern lies in the random nature of the search process. As a consequence, some of the simulated games performed during the Monte Carlo simulations may yield exceptionally poor results that are highly unlikely to occur in actual gameplay.  This lead me to want to discard a portion of those simulated games with particularly poor scores from consideration.
 
 Simply modifying Algorithm 1 to calculate the average score for a given move using only top-performing of simulated games would not adequately address this source of randomness, however.  There are two sources of randomness inherent in the Pure Monte Carlo Tree Search: randomness associated with game-play (which I aim to reduce), and randomness of tile spawns.  Discarding randomly played games with low scores in an attempt to address the former source of randomness might prevent the AI from evaluating branches of the tree which involve unlucky tiles spawning after the next turn.
@@ -119,7 +119,7 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a Markov decision process because the game satifies the Markov property: the probability of reaching a future state depends only on the current state, not on previous states: 
 $$P(s|s_{n-1}, s_{n-2},...,s_{0}) = P(s|s_{n-1}) $$
 
-In general, an is MDP is characterized as follows:
+\noindent In general, an is MDP is characterized as follows:
 \begin{enumerate}
 	\item $S$: The set of states (board position and score) which could arise after the AI's next move.
 	\item $A$: The set of actions which the AI could legally take from the current position.
@@ -136,10 +136,12 @@ $A$ can be constructed by checking which of left, right, up or down are legal mo
 	\item Number of random searches for 2 spawning with 7-9 empty tiles.
 	\item Number of random searches for 2 spawning with 10-15 empty tiles.
 	\item How many times more searches 2 spawns should get compared to 4 spawns.
-	\item Top proportion of best performing moves to return.
+	\item Top proportion of best performing moves to include for score evaluation.
 \end{enumerate}
 
-$\theta_1, \theta_2, \theta_3$ are scaled so they have the same total number of simulations, and $\theta_4$ uses the same number of simulations for each of 10-15 empty tiles.  $\vec{\theta}$ remains constant throughout a single play-through of the game.  As will be discussed in Section 5.1 optimizing $\vec{\theta}$ became a primary direction of inquiry. The policy function, which determines what action $a \in A$ to take, $\pi(s)$, is given by Equation \ref{MC12_policy_fn}:
+$\theta_1, \theta_2, \theta_3$ are scaled so their respective empty tile ranges have the same total number of simulations. $\theta_4$ uses the same number of simulations for each of 10-15 empty tiles.  If $\theta_1 = 500$, for example, the Monte Carlo simulation will run 500 times when there is one tile, 250 times when there are two, and 125 when there are three; if $\theta_4 = 20$, then the Monte Carlo simulation will run 20 times for any number of empty tiles $\in [10, 15s]$. 
+
+$\vec{\theta}$ remains constant throughout a single play-through of the game.  As will be discussed in Section 5.1, optimizing $\vec{\theta}$ became a primary direction of inquiry. The policy function, which determines what action $a \in A$ to take, $\pi(s)$, is given by Equation \ref{MC12_policy_fn}:
 
 \begin{equation}
 \label{MC12_policy_fn}
@@ -147,11 +149,11 @@ $\theta_1, \theta_2, \theta_3$ are scaled so they have the same total number of 
 \end{equation}
 
 
-Notice that $\pi(s)$ picks the action with the highest expected value, where the value associated with reaching a state is given by a Monte Carlo tree search.
+Notice that $\pi(s)$ picks the action with the highest expected value, where the value associated with reaching a state is given by a Monte Carlo tree search.  Compared to the Pure Monte Carlo Tree Search, the MDP facilitates more sophisticated inference in two ways. 
 
 %This is appropriate for $\theta_4$ because beyond early stages of the game, it is uncommon for there to be 10 or more empty tiles, which makes scaling this parameter unnecessarily computationally expensive.
 
-Compared to the Pure Monte Carlo Tree Search, the MDP facilitates more sophisticated inference in two ways. 
+
 
 \begin{enumerate}
   \item By discarding a portion of explored games with poor results at each node, the impact of the Monte Carlo search playing out extremely poor moves due to chance can be mitigated.  Crucially, simulations with lower scores due to "unlucky" tile spawns in the subsequent turn are not eliminated, ensuring a more comprehensive exploration of potential game outcomes.
@@ -163,11 +165,11 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
 
 
 \begin{algorithm}
-    \caption{Generation of $S$}
+    \caption{Generation of possible next states $S$}
     \label{CREATE_S}
     \begin{algorithmic}[1]
     		\Function{getStates}{A}
-    		\State $S = \O$
+    		\State $S = \varnothing$
             \For{$a \in A$}
                 \State $c_s \gets$ score associated with taking action $a$
                 \For{tileNum $\in \{2, 4 \}$}
@@ -187,9 +189,9 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
     \caption{Value Function: $V(s, \vec{\theta})$}
     \label{value_function}
     \begin{algorithmic}[1]
-        \Function{Value}{$s, \vec{\theta}$}
+        \Function{$V(s, \vec{\theta})$}{}
             \State $resultList \gets$ empty list
-            \For{$i \gets 1$ to $\theta_{\text{num\_sims}}$}\Comment{$\theta_{\text{num\_sims}}$ depends on empty tiles}
+            \For{$i \gets 1$ to $\theta_{\text{num\_sims}}$}\Comment{$\theta_{\text{num\_sims}}$ is a model parameter}
                 \State $result \gets$ \Call{RandomGame}{$s$} \Comment{Call the RandomGame function}
                 \State add $result$ to $resultList$ \Comment{Record the result}
             \EndFor
@@ -210,7 +212,7 @@ The MDP is implemented in a manner which makes customizable the number of Monte 
 \end{algorithm}
 
 \subsection{The Problem with Bellman's Equation}
-A common approach in MDP applications is to use Bellman's Equation to evaluate the utility of taking action $a$.  Rather than the utility of entering state $s^\prime$ being given by $V(s^\prime)$, Bellman's equation would hold that the utility would be given by $R(s, a) + \gamma V(s^\prime)$.  Here, $R(s, a)$ is the immediate guaranteed value associated with taking action $a$ when in state $s$, and $\gamma \in [0, 1]$ is a discount rate for expected future rewards.  In principle, and in many other applications of MDP, this approach outperforms simply using $V(s^\prime)$, because it adheres to the principle that immediate, certain rewards are less favourable than uncertain future rewards.  Equation \ref{Bellman_policy} shows how Bellman's Equation could be incorporated into the policy function, $\pi (s)$.
+A common approach in MDP applications is to use Bellman's Equation to evaluate the utility of taking action $a$.  Rather than the utility of entering state $s^\prime$ being given by $V(s^\prime)$, Bellman's equation would hold that the utility would be given by $R(s, a) + \gamma V(s^\prime)$.  Here, $R(s, a)$ is the immediate guaranteed value associated with taking action $a$ when in state $s$, and $\gamma \in [0, 1]$ is a discount rate for expected future rewards.  In principle, and in many other applications of MDP, this approach outperforms simply using $V(s^\prime)$, because it adheres to the principle that immediate, certain rewards are more favourable than uncertain future rewards.  Equation \ref{Bellman_policy} shows how Bellman's Equation could be incorporated into the policy function, $\pi (s)$.
 
 Despite the theoretical backing, using Equation \ref{Bellman_policy} as the policy function decreased performance compared to Equation \ref{MC12_policy_fn} (tested with $\gamma$ = 0.9) and brought performance roughly in line with the less computationally intense Pure Monte Carlo Tree Search.  This is likely because the random games explored using the Monte Carlo value function tend to end with a score only marginally higher than the current score.  This leads immediate score gain, $R(s, a)$, to have a much larger impact on the policy than future scores in Equation \ref{Bellman_policy}.  This is problematic because it makes the algorithm more "greedy," and prioritizes immediate rewards too much over future rewards (even with high values of $\gamma$).
 \begin{equation}
@@ -257,7 +259,7 @@ I intend to optimize for both move speed and score, and find the pareto efficien
 % this para below can go in discussion once I do more param optimization
 Model score is most strongly influenced by the proportion of time the 4096 tile is reached.  Many trials (with a wide range of parameters) which do not reach the 4096 tile achieve a score around 36,000, when they are near the 4096 tile.  AI strategies are likely to fail shortly before reaching the next milestone tile because this is when there are the most large tiles on the board which can not yet be joined.  Once reaching the 4096 tile, it is uncommon for a score below 60,000 to be reached, although there is a meaningful distribution between 60,000 and 80,000, where 80,000 represents the point near achieving a 8192 tile.   This requires that a given set of parameters is evaluated multiple times on the model before reporting performance.  In order to illustrate this, consider the following example:
 
-Suppose that a set of parameters $\vec{\theta_1}$ is stronger than the pre-optimized parameters, and has a true probability of reaching the 4096 tile 60\% of the time, with the model scoring 35,000 when it doesn't reach 4096, and 70,000 when it does.  This means that a score of $56,000 = 0.6(70,000) + 0.4(35,000)$ should be reported as the long term expected performance of $\vec{\theta_1}$.  If $\vec{\theta_1}$ is tested 3 times, the probability of 0.375 that the which would report a score of 47,333 by reaching 4096 only once.   With 9 repeats, the probability of 47,333 or a worse score being reported (reaching 4096 3 times or fewer of 9) is 0.099.  Running the parameters 9 times drastically reduces the noisiness of the data, which enables the Bayesian optimization model to make more accurate predictions about how future sets of parameters will perform.
+Suppose that a set of parameters $\vec{\theta_1}$ is stronger than the pre-optimized parameters, and has a true probability of reaching the 4096 tile 60\% of the time, with the model scoring 35,000 when it doesn't reach 4096, and 70,000 when it does.  This means that a score of $56,000 = 0.6(70,000) + 0.4(35,000)$ should be reported as the long term expected performance of $\vec{\theta_1}$.  If $\vec{\theta_1}$ is tested 3 times, the probability of 0.375 that the AI would report a score of 47,333 by reaching 4096 only once in the three runs.   With 9 repeats, the probability of 47,333 or a worse score being reported (reaching 4096 3 times or fewer of 9) is 0.099.  Running the parameters 9 times drastically reduces the noisiness of the data, which enables the Bayesian optimization model to make more accurate predictions about how future sets of parameters will perform.
 \\
 
 \noindent{\textbf{Contingency plan for parameter optimization:}\\}
@@ -273,28 +275,6 @@ V(s, \vec{\theta}) = \sum_{s^\prime \in S} P(s^\prime|s, a)(R(s, s^\prime) + \ga
 \end{equation}
 
 Equation \ref{expectimax_value_fn} would evaluate to a certain recursive depth, and then call Algorithm \ref{value_function} as the final evaulation of $V(s, \vec{\theta})$ to estimate the value at the final search state.  This strategy would be particularly useful when there are few open tiles on the board because the low number of states to search increases the maximum search depth in a given amount of time.
-
-%The primary area for improvement is parameter optimization.  In particular, the $\vec{\theta}$ parameter described in section 3.2 could be optimized to find... NOT DONE
-%MAIN IDEAS FOR FUTURE DIRECTIONS:\\
-%- optimize $\vec{\theta}$ using surrogate modelling:
-%\begin{enumerate}
-%	\item Evaluate model with a series of parameters created by latin hypercube sampling
-%	\item Design cost function which should be minimized to have "optimal performance". Will need to trade off speed and performance. probably ideally will have on average 2 seconds per move and reward higher scores.
-%	\item EITHER Train some sort of machine learning model to approximate the underlying function, and then minimize that function's cost
-%	\item OR use Bayesian optimization so I can get a better sense of uncertainty.
-%	\item ideally make it multi-objective so I can find the pareto optimal frontier and decide on my own optimal tradeoff of speed vs strength.
-%\end{enumerate}
-
-
-
-%Use heuristics\\
-%Note that part of the challenge here was not to use heuristics
-%https://arxiv.org/abs/2110.10374
-%These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
-
-%dynamically switch to minimax or expectimax when there are few open tiles.\\
-
-
 
 
 
