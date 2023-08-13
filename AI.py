@@ -36,6 +36,9 @@ class MDP2:
         if core_params is None:
             core_params = np.array([500, 54, 18, 9, 6.25])
 
+        if len(core_params) != 5:
+            raise IndexError(f"{len(core_params)} parameters passed to core params:\n{core_params}\nExactly 5 required")
+
         self.depth_dict_2 = {
             15: int(core_params[3]),
             14: int(core_params[3]),

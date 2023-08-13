@@ -4,6 +4,7 @@ from copy import copy
 import tkinter as tk
 import copy
 import numpy as np
+from typing import Union
 
 # todo
 # make islegal() method in Game() class which doesn't move any pieces but checks if a move is legal. should be just the move function without adding tile
@@ -97,7 +98,7 @@ class Board:
             32768: "#6BAED5",
             16384: "#F0513B",
             8192: "#27B053",
-            4096: "#FB736D",
+            4096: "#54C98E", # used to be #FB736D
             2048: "#EDC22E",
             1024: "#EDC23F",
             512: "#EDC850",
@@ -120,6 +121,7 @@ class Board:
                 # FFFFFF is white, 000000 is black
                 if tile not in tile_colours:
                     colour = "#2E2C26"
+
                 else:
                     colour = tile_colours[tile]
                 print(colr.color(f"{tile}\t".expandtabs(highest2 + 2), back=colour, fore="000000"), end=" ")
@@ -132,7 +134,7 @@ class Board:
             32768: "#6BAED5",
             16384: "#F0513B",
             8192: "#27B053",
-            4096: "#FB736D",
+            4096: "#54C98E", # used to be #FB736D
             2048: "#EDC22E",
             1024: "#EDC23F",
             512: "#EDC850",
@@ -181,10 +183,17 @@ class Board:
 
 
 class Game:
-    def __init__(self, board: Board = None, use_gui: bool = True, no_display: bool = False) -> None:
+    def __init__(self, board: Board = None, use_gui: bool = True, no_display: Union[int, bool] = 30) -> None:
         self.score: int = 0
         self.use_gui = use_gui
-        self.no_display = no_display
+
+        if type(no_display) == bool:
+            if not no_display:
+                self.no_display = 1
+            if no_display:
+                self.no_display = np.inf
+        else:
+            self.no_display = no_display
 
         if board is None:
             self.board: Board = Board()
@@ -243,7 +252,7 @@ class Game:
         self.board.add_tile(tile_value, x, y)
 
     def display_updated_board(self):
-        if not self.no_display or self.num_moves % 30 == 0:
+        if self.num_moves % self.no_display == 0:
             if self.use_gui:
                 self.board.tkinter_print(self.score)
             else:
@@ -448,54 +457,8 @@ def run_game(game=None):
 
 
 
-def save_game_result_to_csv(file_name, model, score, duration, board):
-    import numpy as np
-    import os
-    import pandas as pd
-    """
-    Save game results to a CSV file.
-
-    Args:
-        file_name (str): The name of the CSV file.
-        model (str): The model used for the game.
-        score (int): The score achieved in the game.
-        duration (float): The duration of the game in seconds.
-        board (list): 2d array of the board when the game ended
-    """
-    # Create the 'saved games' folder if it doesn't exist
-    folder_path = os.path.join(os.getcwd(), 'saved games')
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    # Check if the CSV file exists
-    file_path = os.path.join(folder_path, f"{file_name}.csv")
-    if os.path.exists(file_path):
-        print(f"FILE PATH EXISTS: {file_path}")
-        # Load the existing CSV file
-        df = pd.read_csv(file_path)
-        print("LOADED DF:")
-        print(df)
-    else:
-        # Create a new DataFrame
-        print(f"FILE PATH DOESNT EXIST: {file_path}")
-        df = pd.DataFrame(columns=['Model', 'Score', 'Duration', 'Board'])
-
-    # Flatten the board into a 1D list
-    flattened_board = np.array(board).flatten().tolist()
-
-    # Create a new row with the provided data
-    new_row = pd.Series({'Model': model, 'Score': score, 'Duration': duration, 'Board': flattened_board})
-    df.loc[len(df)] = new_row
-
-    # Save the DataFrame to the CSV file
-    df.to_csv(f"{file_path}", index=False)
-
-
-
-
-
 if __name__ == '__main__':
-    from all_AI_iterations import *
+    from all_AI_iterations import MDP2, MC12
 
 
     # run_game(False)
@@ -535,15 +498,58 @@ if __name__ == '__main__':
     }
     import time
     i = 1
-    while True:
-        start_time = time.time()
-        g = Game(use_gui=False)
-        g.setup_board()
-        m = MDP2(g, game_obj=Game, verbose=False, best_proportion=1, core_params = np.array([1, 1, 1, 1, 6.25]))  # this just for testing
-        m.run()
-        print(f"IT TOOK {time.time() - start_time}s to run on {i}")
-        i += 1
-    # https: // builtin.com / machine - learning / markov - decision - process BELLMAN BELLMAN EXPECTATION EQUATION FOR MARKOV REWARD PROCESS (MRP)
+
+    # demo game
+    sample_board = [[256, 512, 1024, 2048],
+                    [128, 64, 32, 16, 8],
+                    [64, 2, 4, 4],
+                    [128, 2, 0, 0]]
+    # sample_board = [[256, 512, 1024, 2048],
+    #                 [128, 64, 32, 16],
+    #                 [32, 2, 4, 4],
+    #                 [128, 2, 0, 0]]
+    sample_board_obj = Board(initial_board=sample_board)
+    g = Game(use_gui=True, no_display=False, board=sample_board_obj)
+    g.score = 36120
+
+    start = time.time()
+    g.display_updated_board()
+    time.sleep(1)
+
+    g.right()
+    time.sleep(1)
+    g.display_updated_board()
+
+    g.up()
+    time.sleep(1)
+    g.display_updated_board()
+
+    for i in range(1):
+        g.left()
+        time.sleep(1)
+        g.display_updated_board()
+
+    g.up()
+    time.sleep(1)
+    g.display_updated_board()
+
+    for i in range(3):
+        g.right()
+        time.sleep(1)
+        g.display_updated_board()
+    print(time.time() - start)
+    tk.mainloop()
+    # while True:
+    #     start_time = time.time()
+    #     g = Game(use_gui=True, no_display=False)
+    #     g.setup_board()
+    #     # m = MDP2(g, game_obj=Game, verbose=False, best_proportion=1, core_params = np.array([527, 55, 28, 19, 8.2]))  # best one in sobol sampling so far
+    #     g.display_updated_board()
+    #     m = MC12(g, game_obj=Game, best_proportion=0.25, verbose=False)
+    #     m.run()
+    #     print(f"IT TOOK {time.time() - start_time}s to run on {i}")
+    #     i += 1
+
 
 
 
