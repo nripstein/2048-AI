@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage{amssymb} % needed for \varnothing which is empty set
 \usepackage{graphicx} % Required for inserting images
 
 % these two packages needed for argmax
@@ -9,14 +10,11 @@
 \usepackage{algorithm} 
 \usepackage{algpseudocode} 
 
-\usepackage{subcaption} % Needed for subcaption for side-by-side figures
-\usepackage{amssymb} % needed for \varnothing which is empty set
+\usepackage{subcaption}% Needed for subcaption for side-by-side figures
+\usepackage{indentfirst}% package to indent first paragraph after section header
+\usepackage{float}% make tables and figures stay in correct section
 
-% package to indent first paragraph after section header
-\usepackage{indentfirst}
 
-% make tables and figures stay in correct section
-\usepackage{float}
 
 \usepackage[table]{xcolor}  % allow coloured cells
 \usepackage{tikz} % for designing figures
@@ -25,10 +23,10 @@
 
 \title{2048 AI: Monte Carlo-Powered Markov Decision Process}
 \author{Noah Ripstein}
-\date{August 10, 2023}
+\date{June 12, 2023}
 
 \begin{document}
-
+\usetikzlibrary{decorations.pathreplacing} % TESTING
 \maketitle
 
 
@@ -48,13 +46,13 @@ A Pure Monte Carlo Tree Search was first implemented, and then improved upon by 
   \centering
   \begin{subfigure}[b]{0.45\textwidth}
     \includegraphics[width=\textwidth]{original_ss.jpeg}
-    \caption{Original game}
+    \caption{Original Game}
     \label{fig:original_ss}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{0.45\textwidth}
     \includegraphics[width=\textwidth]{ss_of_mine.png}
-    \caption{My implementation}
+    \caption{Python Clone}
     \label{fig:ss_of_mine}
   \end{subfigure}
   \caption{Screenshots from original game and my implementation}
@@ -68,7 +66,6 @@ A Pure Monte Carlo Tree Search was first implemented, and then improved upon by 
 
 One of the challenges of creating an AI which plays 2048 is the sheer number of possible games.  Figure 1 represents the possible board positions after the player makes only one move.  If there are 8 free spaces on the board, for example, then there are 64 possible game states after the player's move (assuming each of left, right, up and down are legal moves which do not combine any tiles).  In general, there are $2(|S|)(m) + c$ possible states after the player's move, where $|S|$ is the number of legal moves,  $m$ is the number of empty spaces on the board after tiles have been combined from the player's turn, and $c$ is the number of tiles which get merged as a result of the player's move.
 
-%\includegraphics[scale=0.2]{tree_1.jpeg}\\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{tree_1.jpeg}
@@ -221,9 +218,8 @@ Despite the theoretical backing, using Equation \ref{Bellman_policy} as the poli
 \end{equation}
 
 
-\section{Results (figures to be added soon)}
-%can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF.\\
-
+\section{Results}
+%can have some sort of Bayesian BDF bc can model the proportion of time it reaches 2048 as berneulli so can do classic PDF (or just use a beta distribution).\\
 
 \begin{table}[h]
   \caption{Results of Different Models}
@@ -243,6 +239,13 @@ Despite the theoretical backing, using Equation \ref{Bellman_policy} as the poli
     \hline
   \end{tabular}
 \end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{MC12_and_4 violin.png}
+\caption{Model Score Distribution}
+\label{fig:violin1}
+\end{figure}
 
 \section{Future Directions}
 
@@ -276,8 +279,245 @@ V(s, \vec{\theta}) = \sum_{s^\prime \in S} P(s^\prime|s, a)(R(s, s^\prime) + \ga
 
 Equation \ref{expectimax_value_fn} would evaluate to a certain recursive depth, and then call Algorithm \ref{value_function} as the final evaulation of $V(s, \vec{\theta})$ to estimate the value at the final search state.  This strategy would be particularly useful when there are few open tiles on the board because the low number of states to search increases the maximum search depth in a given amount of time.
 
+%The primary area for improvement is parameter optimization.  In particular, the $\vec{\theta}$ parameter described in section 3.2 could be optimized to find... NOT DONE
+%MAIN IDEAS FOR FUTURE DIRECTIONS:\\
+%- optimize $\vec{\theta}$ using surrogate modelling:
+%\begin{enumerate}
+%	\item Evaluate model with a series of parameters created by latin hypercube sampling
+%	\item Design cost function which should be minimized to have "optimal performance". Will need to trade off speed and performance. probably ideally will have on average 2 seconds per move and reward higher scores.
+%	\item EITHER Train some sort of machine learning model to approximate the underlying function, and then minimize that function's cost
+%	\item OR use Bayesian optimization so I can get a better sense of uncertainty.
+%	\item ideally make it multi-objective so I can find the pareto optimal frontier and decide on my own optimal tradeoff of speed vs strength.
+%\end{enumerate}
+
+
+
+%Use heuristics\\
+%Note that part of the challenge here was not to use heuristics
+%https://arxiv.org/abs/2110.10374
+%These stanford math profs made a deep reinforcement learning model that doesnt use heuristics and mine is better than it I think (theirs seems to be for a class they taught rather than research really). Check performance to be sure.
+
+%dynamically switch to minimax or expectimax when there are few open tiles.\\
+
+
+
+
+
+% \begin{tikzpicture}[
+%     level distance=15mm,
+%     every node/.style={
+%         rectangle,
+%         rounded corners,
+%         inner sep=4pt,
+%         text=white,
+%         font=\scriptsize,
+%         anchor=center
+%     },
+%     level 1/.style={sibling distance=25mm,nodes={fill={rgb:red,0;green,154;blue,58}}},
+%     level 2/.style={sibling distance=30mm,nodes={fill={rgb:red,255;green,20;blue,20}}},
+%     level 3/.style={sibling distance=15mm,nodes={fill={rgb:red,255;green,20;blue,20}}}
+%     ]
+    
+%     \node[fill={rgb:red,30;green,148;blue,230}] {Current State}
+%      child {node {Move Right}}
+%      child {node {Move Left}
+%        child {node {4 spawns}
+%          child {node {tile 1}}
+%          child {node {tile m}}
+%        }
+%        child {node {2 spawns}
+%          child {node {tile 1}}
+%          child {node {tile m}}
+%        }
+%      }
+%      child {node {Move Up}}
+%      child {node {Move Down}};
+% \end{tikzpicture}
+
+
+
+
+% \begin{tikzpicture}[
+%     level distance = 1.5cm,
+%     level 1/.style={sibling distance=8cm},
+%     level 2/.style={sibling distance=4cm},
+%     level 3/.style={sibling distance=2cm},
+%     edge from parent/.style={draw}
+% ]
+
+% \node {Current State}
+%     child {
+%         node {Move Left}
+%         child {
+%             node {2 Tile Spawns}
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[left] {0.9}
+%             }
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[right] {0.1}
+%             }
+%         }
+%         child {
+%             node {4 Tile Spawns}
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[left] {0.9}
+%             }
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[right] {0.1}
+%             }
+%         }
+%     }
+%     child {
+%         node {Move Right}
+%     };
+
+% % Braces and labels
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,0) -- (5.5,-1) node[midway,right=10pt]{level 1};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-1.1) -- (5.5,-2.1) node[midway,right=10pt]{$A$};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-2.2) -- (5.5,-4.2) node[midway,right=10pt]{$S$};
+% \end{tikzpicture}
+
+% EDITING THIS ONE\\
+
+
+% \begin{tikzpicture}[
+%     level distance = 1.5cm,
+%     level 1/.style={sibling distance=2cm},
+%     level 2/.style={sibling distance=3cm},
+%     level 3/.style={sibling distance=3cm},
+%     edge from parent/.style={draw}
+% ]
+
+% \node {Current State}
+%     child {
+%             node {Move Up}
+%         }
+%         child {
+%             node {Move Down}
+%         }
+%     child {
+%         node {Move Left}
+%         child {
+%             node {2 Tile Spawns} 
+%             % child {
+%             %     node {Spot 1}
+%             %     edge from parent node[left] {$\frac{1}{m}$}
+%             % }
+%             % child {
+%             %     node {$\hdots$}
+%             %     edge from parent node[left] {$\frac{m - 2}{m}$}
+%             % }
+%             % child {
+%             %     node {Spot m}
+%             %     edge from parent node[left] {$\frac{1}{m}$}
+%             % }
+%             edge from parent node[right] {$\frac{9}{10}$}
+%         }
+%         child {
+%             node {4 Tile Spawns} 
+%             child {
+%                 node {Spot 1}
+%                 edge from parent node[left] {$\frac{1}{m}$}
+%             }
+%             child {
+%                 node {$\hdots$}
+%                 edge from parent node[left] {$\frac{m - 2}{m}$}
+%             }
+%             child {
+%                 node {Spot m}
+%                 edge from parent node[left] {$\frac{1}{m}$}
+%             }
+%             edge from parent node[right] {$\frac{1}{10}$}
+%         }
+%     }
+%     child {
+%         node {Move Right}
+%     }
+%     ;
+
+% % Braces and labels
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,0) -- (5.5,-1) node[midway,right=10pt]{level 1};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-1.1) -- (5.5,-2.1) node[midway,right=10pt]{$A$};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-2.2) -- (5.5,-4.2) node[midway,right=10pt]{$S$};
+% \end{tikzpicture}
+
+    
+% FROM CHATGPT\\
+
+% \begin{tikzpicture}[
+%     level distance = 1.5cm,
+%     level 1/.style={sibling distance=2cm},
+%     level 2/.style={sibling distance=4cm},
+%     level 3/.style={sibling distance=1.5cm},
+%     edge from parent/.style={draw}
+% ]
+
+% \node {Current State}
+%     child {
+%             node {Move Up}
+%         }
+%         child {
+%             node {Move Down}
+%         }
+%     child {
+%         node {Move Left}
+%         child {
+%             node {2 Tile Spawns}
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[left] {0.9}
+%             }
+%             child {
+%                 node {level 3}
+%                 child {node {level 4} edge from parent node[left] {$1/m$}}
+%                 child {node {level 4} edge from parent node[right] {$1/m$}}
+%                 edge from parent node[right] {0.1}
+%             }
+%         }
+%         child [label={[label distance=10pt, yshift=-7.5pt, xshift=5pt]right:$\frac{1}{10}$}] {
+%             node {4 Tile Spawns}
+%             child {
+%                 node {Spot 1}
+%                 edge from parent[draw] node[left] {$\frac{1}{m}$}
+%             }
+%             child {
+%                 node {$\hdots$}
+%                 edge from parent[draw] node[left] {$\frac{m - 2}{m}$}
+%             }
+%             child {
+%                 node {Spot m}
+%                 edge from parent[draw] node[left] {$\frac{1}{m}$}
+%             }
+%         }
+%     }
+%     child {
+%         node {Move Right}
+%     }
+%     ;
+
+% % Braces and labels
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,0) -- (5.5,-1) node[midway,right=10pt]{level 1};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-1.1) -- (5.5,-2.1) node[midway,right=10pt]{$A$};
+% \draw [decorate,decoration={brace,amplitude=10pt}] (5.5,-2.2) -- (5.5,-4.2) node[midway,right=10pt]{$S$};
+% \end{tikzpicture}
+
+
+
+
 
 
 \end{document}
-
-
