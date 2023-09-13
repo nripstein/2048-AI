@@ -23,7 +23,7 @@
 
 \title{2048 AI: Monte Carlo-Powered Markov Decision Process}
 \author{Noah Ripstein}
-\date{June 12, 2023}
+\date{}
 
 \begin{document}
 \usetikzlibrary{decorations.pathreplacing} % TESTING
@@ -113,7 +113,7 @@ Simply modifying Algorithm 1 to calculate the average score for a given move usi
 \end{algorithm}
 
 \subsection{Markov Decision Process}
-The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a Markov decision process because the game satifies the Markov property: the probability of reaching a future state depends only on the current state, not on previous states: 
+The pitfalls of the Pure Monte Carlo Tree Search raised in section 3.1 can be circumvented by formalizing the game structure as a Markov Decision Process (MDP).  The core functionality of the MCTS is used as part of the MDP-based strategy, but the evaluations made with MCTS are made more beneficial by explicitly maximizing expected value.  Where the PMCTS algorithm begins Monte Carlo simulations from the board state after a player's move (green nodes in Figure 2), The MDP strategy begins Monte Carlo simulations from each possible tile spawn in response to a player's move (red nodes in Figure 2).  It is possible to model the game as a Markov decision process because the game satisfies the Markov property: the probability of reaching a future state depends only on the current state, not on previous states: 
 $$P(s|s_{n-1}, s_{n-2},...,s_{0}) = P(s|s_{n-1}) $$
 
 \noindent In general, an is MDP is characterized as follows:
