@@ -1,4 +1,7 @@
 # [Read the Written Report](https://github.com/nripstein/2048/blob/main/2048%20writeup.pdf)
+<p align="center">
+  <img width="700" alt="wrieup preview" src="https://github.com/nripstein/2048-AI/assets/98430636/8e9d2f29-eee0-4618-8d72-106cfa74040c">
+</p>
 
 ## Example
 GUI implimentation <br>
